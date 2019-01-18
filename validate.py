@@ -15,6 +15,8 @@ print ('Filename: ', filename)
 hasErrors = False
 hasWarnings = False
 validClosingStages = ['closed', 'migration execution', 'not closing']
+validTiers = ['tier 1', 'tier 2', 'tier 3', 'tier 4']
+validKMFTypes = ['mission', 'processing', 'control', 'location', 'legal', 'other']
 
 # Lowercase the field keys by updating the header row, for maximum compatiblity.
 def lower_headings(iterator):
@@ -23,6 +25,7 @@ def lower_headings(iterator):
 with open(filename, 'r') as datafile:
   reader = csv.DictReader(lower_headings(datafile))
   for row in reader:
+    num = reader.line_num
     errors = []
     warnings = []
 
@@ -38,6 +41,16 @@ with open(filename, 'r') as datafile:
 
     if not row['record validity']:
       errors.append('Record Validity must not be blank.')
+      
+    if row['key mission facility'] == 'Yes':
+      if not row['key mission facility type']:
+        errors.append('Key Mission Facilities must have a Key Mission Facility Type.')
+        
+      elif row['key mission facility type'].lower() not in validKMFTypes:
+        errors.append('Key Mission Facilities must have a Key Mission Facility Type, "{}" given.'.format(row['key mission facility type']))
+        
+      elif row['key mission facility type'].lower() == 'other' and not row['comments']:
+        errors.append('Key Mission Facilities of Type "other" must have an explanation in the Comments field.')
 
     # The data centers that are still targets for optimization - Valid, Agency-Owned, Open, non-Tenant.
     if (row['record validity'] == 'Valid Facility' and
@@ -116,27 +129,63 @@ with open(filename, 'r') as datafile:
     # Data validation rules. This should catch any bad data.
     ###
     
-    ## TODO:Check for open, non-tiered, valid facilities
+    if (row['record validity'] == 'Valid Facility' and
+        row['closing stage'] != 'Closed' and
+        row['ownership type'] == 'Agency Owned' and
+        row['data center tier'].lower() not in validTiers):
+      warnings.append('Only tiered data centers need to be reported, marked as "{}"'.format(row['data center tier']))
+        
     
     # Impossible PUEs
-    if row['avg electricity usage'] and row['avg it electricity usage']:
-      warnings.append('Avg Electricity Usage for a facility should never be equal to Avg IT Electricity Usage (PUE 1.0)')
+    
+    # PUE = 1.0:
+    if (row['avg electricity usage'] and 
+        row['avg it electricity usage'] and
+        row['avg electricity usage'] == row['avg it electricity usage']):
+      warnings.append(
+        'Avg Electricity Usage ({}) for a facility should never be equal to Avg IT Electricity Usage ({})'
+          .format(row['avg electricity usage'], row['avg it electricity usage'])
+      )
 
 
-    # Check for incorrect KMF reporting
-    ## TODO: KMF Type without KMF == Yes
-    ## TODO: KMF == Yes without Type
-    ## TODO: KMF on non-tiered, valid facitilies
-    ## TODO: KMFs must be agency owned
+    # Check for incorrect KMF reporting      
+    if row['key mission facility type'] and row['key mission facility'] != 'Yes':
+      warnings.append('Key Mission Facility Type should only be present if Key Mission Facility is "Yes"')
+    
+    if row['key mission facility'] == 'Yes':
+      if row['data center tier'] not in validTiers:
+        warnings.append('Key Mission Facilities should not be non-tiered data centers.')
+        
+      if row['ownership type'] != 'Agency Owned':
+        warnings.append('Key Mission Facilities should only be agency-owned.')
   
+      if row['record validity'] != 'Valid Facility':
+        warnings.append('Invalid facilities should not be Key Mission Facilities.')
+        
     ###
     # Print our results.
     ###
 
     if len(errors) or len(warnings):
-      print(row['data center id'])
+      # Print some sort of name to look up, even if we don't have one.
+      dcName = []
+      
+      if row['agency abbreviation']:
+        dcName.append(row['agency abbreviation'])
+      
+      if row['component']:
+        dcName.append(row['component'])
+      
+      if row['data center id']:
+        dcName.append(row['data center id'])
+      
+      else:
+        dcName.append('Line Number {}'.format(num))
+      
+      print(' - '.join(dcName))
+      
     if len(errors) > 0:
-      hasErrors = True;
+      hasErrors = True
       print('  Errors:', "\n   ", "\n    ".join(errors))
 
     if len(warnings) > 0:
@@ -155,7 +204,8 @@ with open(filename, 'r') as datafile:
     print('* Any errors must be corrected before the data file will be accepted.')
 
   if hasWarnings:
-    print('* The warnings above _should_ be corrected before submitting this data, but it is not required.')
+    print('* The warnings above _should_ be corrected before submitting this data, but it ')
+    print('* is not required.')
 
   if not hasErrors and not hasWarnings:
     print('* The file had no problems or errors.')
