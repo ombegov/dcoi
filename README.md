@@ -32,7 +32,7 @@ Usage: `python createDatabase.py`
 
 ## importIDCData.py
 
-This script mports data from an IDC spreadsheet or a directory of spreadsheets
+This script imports data from an IDC spreadsheet or a directory of spreadsheets
 into the SQLite database.
 
 Usage: `python importIDCData.py FILENAME.csv`
