@@ -33,95 +33,95 @@ with open(filename, 'r') as datafile:
     # Data acceptance rules. These should match the IDC instructions.
     ###
 
-    if not row['agency abbreviation']:
+    if not row.get('agency abbreviation'):
       errors.append('Agency Abbreviation must not be blank.')
 
-    if not row['component']:
+    if not row.get('component'):
       errors.append('Component must not be blank.')
 
-    if not row['record validity']:
+    if not row.get('record validity'):
       errors.append('Record Validity must not be blank.')
       
-    if row['key mission facility'] == 'Yes':
-      if not row['key mission facility type']:
+    if row.get('key mission facility') == 'Yes':
+      if not row.get('key mission facility type'):
         errors.append('Key Mission Facilities must have a Key Mission Facility Type.')
         
-      elif row['key mission facility type'].lower() not in validKMFTypes:
-        errors.append('Key Mission Facilities must have a Key Mission Facility Type, "{}" given.'.format(row['key mission facility type']))
+      elif row.get('key mission facility type', '').lower() not in validKMFTypes:
+        errors.append('Key Mission Facilities must have a Key Mission Facility Type, "{}" given.'.format(row.get('key mission facility type')))
         
-      elif row['key mission facility type'].lower() == 'other' and not row['comments']:
+      elif row.get('key mission facility type', '').lower() == 'other' and not row.get('comments'):
         errors.append('Key Mission Facilities of Type "other" must have an explanation in the Comments field.')
 
     # The data centers that are still targets for optimization - Valid, Agency-Owned, Open, non-Tenant.
-    if (row['record validity'] == 'Valid Facility' and
-        row['ownership type'] == 'Agency Owned' and
-        row['closing stage'] != 'Closed' and
-        row['inter-agency shared services position'] != 'Tenant'):
+    if (row.get('record validity') == 'Valid Facility' and
+        row.get('ownership type') == 'Agency Owned' and
+        row.get('closing stage') != 'Closed' and
+        row.get('inter-agency shared services position') != 'Tenant'):
 
-      if not row['closing stage']:
+      if not row.get('closing stage'):
         errors.append('Closing Stage must not be blank.')
       else:
         try:
-          validClosingStages.index(row['closing stage'].lower())
+          validClosingStages.index(row.get('closing stage', '').lower())
 
-          if row['closing stage'].lower() != 'not closing':
-            if not row['closing fiscal year']:
+          if row.get('closing stage', '').lower() != 'not closing':
+            if not row.get('closing fiscal year'):
               errors.append('Closing Fiscal Year must not be blank if Closing Stage is not "Not Closing"')
 
-            if not row['closing quarter']:
+            if not row.get('closing quarter'):
               errors.append('Closing Quarter must not be blank if Closing Stage is not "Not Closing"')
 
         except ValueError:
           errors.append('Closing Stage value must be one of [', ', '.join(validClosingStages), ']')
 
 
-      if row['key mission facility'] == 'Yes':
-        if not row['key mission facility type']:
+      if row.get('key mission facility') == 'Yes':
+        if not row.get('key mission facility type'):
           errors.append('Key Mission Facility Type must not be blank for all Key Mission Facilities')
 
       else:
-        if not row['data center name']:
+        if not row.get('data center name'):
           errors.append('Data Center Name must not be blank.')
 
-        if not row['gross floor area']:
+        if not row.get('gross floor area'):
           errors.append('Gross Floor Area must not be blank.')
 
-        if not row['data center tier']:
+        if not row.get('data center tier'):
           errors.append('Data Center Tier must not be blank.')
 
-        if not row['electricity is metered']:
+        if not row.get('electricity is metered'):
           errors.append('Electricity is Metered must not be blank.')
 
-        elif row['electricity is metered'] == 'Yes':
-          if not row['avg electricity usage']:
+        elif row.get('electricity is metered') == 'Yes':
+          if not row.get('avg electricity usage'):
             errors.append('Avg Electricity Usage must not be blank if Electricity Is Metered = Yes.')
 
-          if not row['avg it electricity usage']:
+          if not row.get('avg it electricity usage'):
             errors.append('Avg IT Electricity Usage must not be blank if Electricity Is Metered = Yes.')
 
         # The following numeric fields may reasonably be "0", so we must check for blanks instead of "not".
-        if row['underutilized servers'] == '':
+        if row.get('underutilized servers') == '':
           errors.append('Underutilized Servers must not be blank.')
 
-        if row['actual hours of facility downtime'] == '':
+        if row.get('actual hours of facility downtime') == '':
           errors.append('Actual Hours of Facility Downtime must not be blank')
 
-        if row['planned hours of facility availability'] == '':
+        if row.get('planned hours of facility availability') == '':
           errors.append('Planned Hours of Facility Availability must not be blank')
 
-        if row['rack count'] == '':
+        if row.get('rack count') == '':
           errors.append('Rack Count must not be blank')
 
-        if row['total mainframes'] == '':
+        if row.get('total mainframes') == '':
           errors.append('Total Mainframes must not be blank')
 
-        if row['total hpc cluster nodes'] == '':
+        if row.get('total hpc cluster nodes') == '':
           errors.append('Total HPC Cluster Nodes must not be blank')
 
-        if row['total servers'] == '':
+        if row.get('total servers') == '':
           errors.append('Total Servers must not be blank')
 
-        if row['total virtual hosts'] == '':
+        if row.get('total virtual hosts') == '':
           errors.append('Total Virtual Hosts must not be blank')
 
 
@@ -129,37 +129,37 @@ with open(filename, 'r') as datafile:
     # Data validation rules. This should catch any bad data.
     ###
     
-    if (row['record validity'] == 'Valid Facility' and
-        row['closing stage'] != 'Closed' and
-        row['ownership type'] == 'Agency Owned' and
-        row['data center tier'].lower() not in validTiers):
-      warnings.append('Only tiered data centers need to be reported, marked as "{}"'.format(row['data center tier']))
+    if (row.get('record validity') == 'Valid Facility' and
+        row.get('closing stage') != 'Closed' and
+        row.get('ownership type') == 'Agency Owned' and
+        row.get('data center tier', '').lower() not in validTiers):
+      warnings.append('Only tiered data centers need to be reported, marked as "{}"'.format(row.get('data center tier')))
         
     
     # Impossible PUEs
     
     # PUE = 1.0:
-    if (row['avg electricity usage'] and 
-        row['avg it electricity usage'] and
-        row['avg electricity usage'] == row['avg it electricity usage']):
+    if (row.get('avg electricity usage') and
+        row.get('avg it electricity usage') and
+        row.get('avg electricity usage') == row.get('avg it electricity usage')):
       warnings.append(
         'Avg Electricity Usage ({}) for a facility should never be equal to Avg IT Electricity Usage ({})'
-          .format(row['avg electricity usage'], row['avg it electricity usage'])
+          .format(row.get('avg electricity usage'), row.get('avg it electricity usage'))
       )
 
 
     # Check for incorrect KMF reporting      
-    if row['key mission facility type'] and row['key mission facility'] != 'Yes':
+    if row.get('key mission facility type') and row.get('key mission facility') != 'Yes':
       warnings.append('Key Mission Facility Type should only be present if Key Mission Facility is "Yes"')
     
-    if row['key mission facility'] == 'Yes':
-      if row['data center tier'] not in validTiers:
+    if row.get('key mission facility') == 'Yes':
+      if row.get('data center tier') not in validTiers:
         warnings.append('Key Mission Facilities should not be non-tiered data centers.')
         
-      if row['ownership type'] != 'Agency Owned':
+      if row.get('ownership type') != 'Agency Owned':
         warnings.append('Key Mission Facilities should only be agency-owned.')
   
-      if row['record validity'] != 'Valid Facility':
+      if row.get('record validity') != 'Valid Facility':
         warnings.append('Invalid facilities should not be Key Mission Facilities.')
         
     ###
@@ -170,14 +170,14 @@ with open(filename, 'r') as datafile:
       # Print some sort of name to look up, even if we don't have one.
       dcName = []
       
-      if row['agency abbreviation']:
-        dcName.append(row['agency abbreviation'])
+      if row.get('agency abbreviation'):
+        dcName.append(row.get('agency abbreviation'))
       
-      if row['component']:
-        dcName.append(row['component'])
+      if row.get('component'):
+        dcName.append(row.get('component'))
       
-      if row['data center id']:
-        dcName.append(row['data center id'])
+      if row.get('data center id'):
+        dcName.append(row.get('data center id'))
       
       else:
         dcName.append('Line Number {}'.format(num))
