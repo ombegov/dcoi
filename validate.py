@@ -24,6 +24,13 @@ def lower_headings(iterator):
 
 with open(filename, 'r') as datafile:
   reader = csv.DictReader(lower_headings(datafile))
+  stats = {
+    'record_total': 0,
+    'record_error': 0,
+    'record_warning': 0,
+    'error': 0,
+    'warning': 0
+  }
   for row in reader:
     num = reader.line_num
     errors = []
@@ -192,6 +199,11 @@ with open(filename, 'r') as datafile:
       hasWarnings = True
       print('  Warnings:', "\n   ", "\n    ".join(warnings))
 
+    stats['record_total'] += 1
+    stats['record_error'] += 1 if len(errors) else 0
+    stats['record_warning'] += 1 if len(warnings) else 0
+    stats['error'] += len(errors)
+    stats['warning'] += len(warnings)
 
   ###
   # Print our final validation results.
@@ -199,6 +211,17 @@ with open(filename, 'r') as datafile:
 
   print('')
   print('********************************************************************************')
+
+  print('* Total records in file: %d.' % stats['record_total'])
+
+  if hasErrors or hasWarnings:
+    print('*')
+    print('*', end=" ")
+    if hasErrors:
+      print('%d errors found in %d records.' % (stats['error'], stats['record_error']), end=" ")
+    if hasWarnings:
+      print('%d warnings found in %d records.' % (stats['warning'], stats['record_warning']))
+    print('*')
 
   if hasErrors:
     print('* Any errors must be corrected before the data file will be accepted.')
