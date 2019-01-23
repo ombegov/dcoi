@@ -5,6 +5,7 @@
 # TODO: Add Key Mission Facilities to calculations
 # TODO: Add cost savings queries - this needs cost savings data file scraper
 #
+from __future__ import print_function
 
 import csv
 import sys
