@@ -25,7 +25,7 @@ import config
 # > {'a': {'b': {'c': 15}}}
 def deepadd(myList, *params):
   params = list(params)
-  
+
   key = params.pop(0)
 
   if len(params) > 1:
@@ -39,9 +39,12 @@ def deepadd(myList, *params):
     else:
       myList[key] += params[0]
 
+def getQuarter(row):
+  return "{} Q{}".format(row['year'], row['quarter'])
 
 # Setup our base data holders.
 metrics = [
+  'count',
   'virtualization',
   'servers',
   'mainframes',
@@ -102,13 +105,13 @@ for row in c.fetchall():
     data[row['agency']] = copy.deepcopy(baseData)
 
   # Setup our quarter string.
-  quarter = "{} Q{}".format(row['year'], row['quarter'])
+  quarter = getQuarter(row)
 
   # If it's not closed, it's open.
   closingStage = 'closed'
   if row['closingStage'] != 'Closed':
     closingStage = 'open'
-  
+
   tier = row['tier']
   if tier not in tiers:
     tier = 'nontiered'
@@ -141,6 +144,8 @@ SELECT
 agency,
 year,
 quarter,
+tier,
+COUNT(*) AS count,
 SUM(electricityMetered) AS energyMetering,
 SUM(underutilizedServers) AS underutilizedServers,
 SUM(downtimeHours) AS downtime,
@@ -152,26 +157,25 @@ SUM(virtualHostCount) AS virtualization
 FROM datacenters
 WHERE closingStage != 'Closed'
 AND ownershipType = 'Agency Owned'
-GROUP BY agency, year, quarter
-ORDER BY agency, year, quarter
+GROUP BY agency, year, quarter, tier
+ORDER BY agency, year, quarter, tier
 ''')
 
 for row in c.fetchall():
   # Setup our quarter string.
-  quarter = "{} Q{}".format(row['year'], row['quarter'])
+  quarter = getQuarter(row)
+
+  tier = row['tier']
+  if tier not in tiers:
+    #tier = 'nontiered'
+    continue
 
   for metric in metrics:
-    data[row['agency']]['metrics'][metric][quarter] = row[metric]
+    deepadd(data, row['agency'], 'metrics', metric, quarter, tier, row[metric])
+    deepadd(data, row['agency'], 'metrics', metric, quarter, 'total', row[metric])
 
-  # Setup our aggregate.
-  if quarter not in data[allAgencies]['metrics']['virtualization']:
-    for metric in metrics:
-      data[allAgencies]['metrics'][metric][quarter] = 0
-
-  # Add to our aggregate.
-  for metric in metrics:
-    data[allAgencies]['metrics'][metric][quarter] += row[metric]
-
+    deepadd(data, allAgencies, 'metrics', metric, quarter, tier, row[metric])
+    deepadd(data, allAgencies, 'metrics', metric, quarter, 'total', row[metric])
 
 print( json.dumps(data) )
 
@@ -182,7 +186,6 @@ exit()
 
 """
 Example JSON format (numbers are made up!)
-TODO: split up by tier.
 
 {
   "All Agencies": {
@@ -222,91 +225,60 @@ TODO: split up by tier.
     },
     "metrics": {
       "virtualization": {
-        "2018 Q4": 5000
+        "total": 3000,
+        "tier 1": 300,
+        "tier 2": 500,
+        "tier 3": 1200,
+        "tier 4": 1000
       },
       "servers":  {
-        "2018 Q4": 218000
+        "total": 6000,
+        "tier 1": 1000,
+        "tier 2": 1000,
+        "tier 3": 2000,
+        "tier 4": 2000
       },
       "mainframes": {
-        "2018 Q4": "50000"
+        "total": 360,
+        "tier 1": 200,
+        "tier 2": 100,
+        "tier 3": 50,
+        "tier 4": 10
       },
       "hpcs": {
-        "2018 Q4": "25000"
+        "total": 30,
+        "tier 1": 0,
+        "tier 2": 0,
+        "tier 3": 10,
+        "tier 4": 20
       },
       "downtime":  {
-        "2018 Q4": 50
+        "total": 36,
+        "tier 1": 20,
+        "tier 2": 10,
+        "tier 3": 5,
+        "tier 4": 1
       },
       "plannedUptime": {
-        "2018 Q4": 200000
+        "total": 360000,
+        "tier 1": 200000,
+        "tier 2": 100000,
+        "tier 3": 50000,
+        "tier 4": 10000
       },
       "energyMetering": {
-        "2018 Q4": 5000
+        "total": 3600,
+        "tier 1": 2000,
+        "tier 2": 1000,
+        "tier 3": 500,
+        "tier 4": 100
       },
       "underutilizedServers": {
-        "2018 Q4": 150
-      }
-    }
-  },
-  "USDA": {
-    "datacenters": {
-    "datacenters": {
-      "open": {
-        "2018 Q4": {
-          "total": 360,
-          "tier 1": 200,
-          "tier 2": 100,
-          "tier 3": 50,
-          "tier 4": 10,
-          "nontiered": 500
-        }
-      },
-      "closed": {
-        "2018 Q4": {
-          "total": 360,
-          "tier 1": 200,
-          "tier 2": 100,
-          "tier 3": 50,
-          "tier 4": 10,
-          "nontiered": 4000
-        }
-      },
-      "kmf": {
-        "2018 Q4": {
-          "total": 70,
-          "tier 1": 30,
-          "tier 2": 20,
-          "tier 3": 15,
-          "tier 4": 5
-        }
-      }
-    },
-    "savings": {
-      "2018 Q4": 100
-    },
-    "metrics": {
-      "virtualization": {
-        "2018 Q4": 500
-      },
-      "servers":  {
-        "2018 Q4": 21000
-      },
-      "mainframes": {
-        "2018 Q4": "5000"
-      },
-      "hpcs": {
-        "2018 Q4": "2500"
-      },
-      "unplanned outages":  {
-        "2018 Q4": 5
-      },
-      "plannedUptime": {
-        "2018 Q4": 20000
-      },
-      "energyMetering": {
-        "2018 Q4": 500
-      },
-      "underutilizedServers": {
-        "2018 Q4": 15
+        "total": 3600,
+        "tier 1": 2000,
+        "tier 2": 1000,
+        "tier 3": 500,
+        "tier 4": 100
       }
     }
   }
