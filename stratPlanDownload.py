@@ -4,10 +4,11 @@
 
 import sqlite3
 import requests
-# Our JSON might not be... pristine, so we must use a more flexible module.
-from barely_json import parse
 import string
 import re
+import time
+# Our JSON might not be... pristine, so we must use a more flexible module.
+from barely_json import parse
 
 import config
 
@@ -46,6 +47,34 @@ agencies = {
 
 missingAgencies = []
 
+today = int(time.strftime("%Y%m%d"))
+
+types = [
+  'costSavings',
+  'closures',
+  ('optimizationMetrics', 'energyMetering'),
+  ('optimizationMetrics', 'virtualization'),
+  ('optimizationMetrics', 'underutilizedServers'),
+  ('optimizationMetrics', 'availability')
+]
+
+fields = [
+  'fy16Planned',
+  'fy16Achieved',
+  'fy17Planned',
+  'fy17Achieved',
+  'fy18Planned',
+  'fy18Achieved',
+  'fy19Planned',
+  'fy19Achieved',
+  'fy20Planned',
+  'fy20Achieved',
+  'explanation',
+  'costsOfClosures',
+  'costsOfOptimization',
+  'historicalCostSavings'
+]
+
 def filter_nonprintable(text):
     nonprintable = set([chr(i) for i in range(128)]).difference(string.printable)
 
@@ -66,16 +95,57 @@ for agency in agencies:
     continue
 
   if r.status_code == 200 and len(r.text):
-    #try:
-      text = filter_nonprintable(r.text)
-      data = parse(text)
-      print(data)
+    text = filter_nonprintable(r.text)
+    data = parse(text)
 
-
+    # print(data) # DEBUG
+    # TODO: Validate
+    
+    # Insert into database.
+    
+    # loop over our categories.
+    for type in types:
+      
+      if isinstance(type, str):
+        if type in data:
+          row = data[type]
+          
+      elif isinstance(type, tuple):
+        (key, type) = type
+        if key in data and type in data[key]:
+          row = data[key][type]
+          
+      else:
+        print('Missing JSON field "{}"'.format(type))
+        continue
+      
+      # Holder for our data to put into the database.
+      insertData = {
+        'importDate': today,
+        'type': type
+      }
+      
+      # Then loop over our fields and build the insert data.
+      for field in fields:
+        if field in row:
+          insertData[field] = row[field]
+      
+      # Create a string for the insert statement.
+      insertString = 'INSERT INTO stratplans ({}) VALUES({})'.format(
+        ', '.join(insertData.keys()), # fields list
+        ', '.join([':'+key for key in insertData.keys()]) # values: fill with ":fieldName"
+      )
+      
+      conn.execute(insertString, insertData)
+     
   else:
-    print('! Cannot download file. ({})'.format(r.status_code))
+    print('! Cannot download file. (HTTP {})'.format(r.status_code))
     missingAgencies.append(agency)
     continue
 
+# Commit and close the connection.
+conn.commit()
+conn.close()
+    
 if len(missingAgencies):
   print('Could not download these strategic plans:', missingAgencies)

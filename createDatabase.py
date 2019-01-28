@@ -42,6 +42,26 @@ c.execute('''
   )
 ''')
 
+c.execute('''
+  CREATE TABLE IF NOT EXISTS stratplans (
+    importDate INTEGER,
+    type TEXT,
+    fy16Planned REAL,
+    fy16Achieved REAL,
+    fy17Planned REAL,
+    fy17Achieved REAL,
+    fy18Planned REAL,
+    fy18Achieved REAL,
+    fy19Planned REAL,
+    fy19Achieved REAL,
+    fy20Planned REAL,
+    fy20Achieved REAL,
+    explanation TEXT,
+    costsOfClosures TEXT,
+    costsOfOptimization TEXT,
+    historicalCostSavings TEXT
+  )
+''')
 
 conn.commit()
 
