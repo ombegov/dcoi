@@ -2,6 +2,7 @@
 # This script may be used to import IDC spreadsheets to a local sqlite database
 # The spreadsheet must be in the historical IDC format.
 ###
+from __future__ import print_function
 
 import os
 import csv
