@@ -3,6 +3,7 @@ from __future__ import print_function
 import csv
 import sys
 import itertools
+import re
 
 try:
   filename = sys.argv[1]
@@ -33,24 +34,10 @@ with open(filename, 'r') as datafile:
     'error': 0,
     'warning': 0
   }
-  ids = set()
   for row in reader:
     num = reader.line_num
     errors = []
     warnings = []
-
-    ###
-    # Data Center ID should be present and unique.
-    ###
-
-    if not row.get('data center id'):
-      errors.append('Data Center ID must not be blank.')
-
-    elif row.get('data center id') in ids:
-      errors.append('Data Center ID must be unique.')
-
-    else:
-      ids.add(row.get('data center id'))
 
     ###
     # Data acceptance rules. These should match the IDC instructions.
@@ -61,6 +48,10 @@ with open(filename, 'r') as datafile:
 
     if not row.get('component'):
       errors.append('Component must not be blank.')
+
+    if row.get('data center id'):
+      if not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
+        errors.append('Data Center ID must be DCOI-DC-#####. Or leave blank for new data centers.')
 
     if not row.get('record validity'):
       errors.append('Record Validity must not be blank.')
