@@ -14,8 +14,8 @@ outstanding issues._
 
 ## validate.py
 
-This script should be run to validate any IDC csv files before submitting to 
-OMB. The script will output any errors in the data that must be resolved, 
+This script should be run to validate any IDC csv files before submitting to
+OMB. The script will output any errors in the data that must be resolved,
 and also list warnings of data that does not meet expectations for quality.
 
 Usage: `python validate.py FILENAME.csv`
@@ -38,6 +38,17 @@ into the SQLite database.
 Usage: `python importIDCData.py FILENAME.csv`
 
 Usage: `python importIDCData.py /DIRECTORY/OF/DATAFILES/`
+
+## stratPlanDownload.py
+
+This script scrapes agencies' websites to download their Strategic Plan JSON
+files and import them into the database.  Note that this script requires
+several supplementary Python packages, which may be installed using the
+included `requirements.txt` file.
+
+Install dependencies: `pip install -r requirements.txt`
+
+Usage: `python stratPlanDownload.py`
 
 ## runDCOIReport.py
 
