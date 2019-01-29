@@ -3,6 +3,7 @@ from __future__ import print_function
 import csv
 import sys
 import itertools
+import re
 
 try:
   filename = sys.argv[1]
@@ -47,6 +48,10 @@ with open(filename, 'r') as datafile:
 
     if not row.get('component'):
       errors.append('Component must not be blank.')
+
+    if row.get('data center id'):
+      if not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
+        errors.append('Data Center ID must be DCOI-DC-#####. Or leave blank for new data centers.')
 
     if not row.get('record validity'):
       errors.append('Record Validity must not be blank.')
