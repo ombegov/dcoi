@@ -31,7 +31,7 @@ def main():
   # For a single file.
   if os.path.isfile(args.filename):
     import_file(args.filename, args.quarter, c)
-  
+
   # For a director of files.
   elif(os.path.isdir(args.filename)):
     for f in os.listdir(args.filename):

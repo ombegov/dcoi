@@ -39,6 +39,7 @@ Usage: `python importIDCData.py FILENAME.csv`
 
 Usage: `python importIDCData.py /DIRECTORY/OF/DATAFILES/`
 
+
 ## stratPlanDownload.py
 
 This script scrapes agencies' websites to download their Strategic Plan JSON
@@ -49,6 +50,7 @@ included `requirements.txt` file.
 Install dependencies: `pip install -r requirements.txt`
 
 Usage: `python stratPlanDownload.py`
+
 
 ## runDCOIReport.py
 

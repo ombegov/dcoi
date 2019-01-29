@@ -100,44 +100,44 @@ for agency in agencies:
 
     # print(data) # DEBUG
     # TODO: Validate
-    
+
     # Insert into database.
-    
+
     # loop over our categories.
     for type in types:
-      
+
       if isinstance(type, str):
         if type in data:
           row = data[type]
-          
+
       elif isinstance(type, tuple):
         (key, type) = type
         if key in data and type in data[key]:
           row = data[key][type]
-          
+
       else:
         print('Missing JSON field "{}"'.format(type))
         continue
-      
+
       # Holder for our data to put into the database.
       insertData = {
         'importDate': today,
         'type': type
       }
-      
+
       # Then loop over our fields and build the insert data.
       for field in fields:
         if field in row:
           insertData[field] = row[field]
-      
+
       # Create a string for the insert statement.
       insertString = 'INSERT INTO stratplans ({}) VALUES({})'.format(
         ', '.join(insertData.keys()), # fields list
         ', '.join([':'+key for key in insertData.keys()]) # values: fill with ":fieldName"
       )
-      
+
       conn.execute(insertString, insertData)
-     
+
   else:
     print('! Cannot download file. (HTTP {})'.format(r.status_code))
     missingAgencies.append(agency)
@@ -146,6 +146,6 @@ for agency in agencies:
 # Commit and close the connection.
 conn.commit()
 conn.close()
-    
+
 if len(missingAgencies):
   print('Could not download these strategic plans:', missingAgencies)
