@@ -33,24 +33,10 @@ with open(filename, 'r') as datafile:
     'error': 0,
     'warning': 0
   }
-  ids = set()
   for row in reader:
     num = reader.line_num
     errors = []
     warnings = []
-
-    ###
-    # Data Center ID should be present and unique.
-    ###
-
-    if not row.get('data center id'):
-      errors.append('Data Center ID must not be blank.')
-
-    elif row.get('data center id') in ids:
-      errors.append('Data Center ID must be unique.')
-
-    else:
-      ids.add(row.get('data center id'))
 
     ###
     # Data acceptance rules. These should match the IDC instructions.
