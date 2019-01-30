@@ -7,11 +7,17 @@ import requests
 import string
 import re
 import time
+import sys
 # Our JSON might not be... pristine, so we must use a more flexible module.
 from barely_json import parse
 
 import config
 
+# Request headers for our scraper.
+headers = {
+  'User-Agent': 'OFCIO DCOI Scraper',
+  'From': 'ofcio@omb.eop.gov'
+}
 
 conn = sqlite3.connect(config.DB_CONFIG['file'])
 c = conn.cursor()
@@ -19,30 +25,30 @@ c = conn.cursor()
 fileLocation = "/digitalstrategy/datacenteroptimizationstrategicplan.json"
 
 agencies = {
-"Commerce": "https://www.commerce.gov",
-"DHS": "http://www.dhs.gov",
-"DOD": "http://www.defense.gov",
-"DOT": "https://www.transportation.gov",
-"ED": "http://www.ed.gov",
-"Energy": "http://www.energy.gov",
-"EPA": "http://www.epa.gov",
-"GSA": "http://www.gsa.gov",
-"HHS": "http://www.hhs.gov",
-"HUD": "http://www.hud.gov",
-"Interior": "https://www.doi.gov",
-"Justice": "https://www.justice.gov",
-"Labor": "http://www.dol.gov",
-"NASA": "http://www.nasa.gov",
-"NRC": "https://www.nrc.gov",
-"NSF": "https://www.nsf.gov",
-"OPM": "http://www.opm.gov",
-"SBA": "http://www.sba.gov",
-"SSA": "http://www.ssa.gov",
-"State": "http://www.state.gov",
-"Treasury": "http://www.treasury.gov",
-"USAID": "http://www.usaid.gov",
-"USDA": "http://www.usda.gov",
-"VA": "http://www.va.gov"
+  "Commerce": "https://www.commerce.gov",
+  "DHS": "http://www.dhs.gov",
+  "DOD": "http://www.defense.gov",
+  "DOT": "https://www.transportation.gov",
+  "ED": "http://www.ed.gov",
+  "Energy": "http://www.energy.gov",
+  "EPA": "http://www.epa.gov",
+  "GSA": "http://www.gsa.gov",
+  "HHS": "http://www.hhs.gov",
+  "HUD": "http://www.hud.gov",
+  "Interior": "https://www.doi.gov",
+  "Justice": "https://www.justice.gov",
+  "Labor": "http://www.dol.gov",
+  "NASA": "http://www.nasa.gov",
+  "NRC": "https://www.nrc.gov",
+  "NSF": "https://www.nsf.gov",
+  "OPM": "http://www.opm.gov",
+  "SBA": "http://www.sba.gov",
+  "SSA": "http://www.ssa.gov",
+  "State": "http://www.state.gov",
+  "Treasury": "http://www.treasury.gov",
+  "USAID": "http://www.usaid.gov",
+  "USDA": "http://www.usda.gov",
+  "VA": "http://www.va.gov"
 }
 
 missingAgencies = []
@@ -128,7 +134,9 @@ for agency in agencies:
       # Then loop over our fields and build the insert data.
       for field in fields:
         if field in row:
-          insertData[field] = row[field]
+          # We store these floats as strings due to Python's precision.
+          # https://github.com/ombegov/dcoi/issues/6
+          insertData[field] = str(row[field])
 
       # Create a string for the insert statement.
       insertString = 'INSERT INTO stratplans ({}) VALUES({})'.format(

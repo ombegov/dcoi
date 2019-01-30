@@ -13,6 +13,8 @@ import itertools
 import sqlite3
 import json
 import copy
+import re
+from decimal import Decimal
 
 import config
 
@@ -42,6 +44,22 @@ def deepadd(myList, *params):
 
 def getQuarter(row):
   return "{} Q{}".format(row['year'], row['quarter'])
+
+# The default JSON encoder is too dumb to handle Decimals. However, using
+# Python-native floats end up as an approximation, so we must use flagged
+# strings instead. We remove these flags before outputting.
+
+JSONEncoder_olddefault = json.JSONEncoder.default
+def JSONEncoder_newdefault(self, o):
+#    if isinstance(o, UUID): return str(o)
+#    if isinstance(o, datetime): return str(o)
+#    if isinstance(o, time.struct_time): return datetime.fromtimestamp(time.mktime(o))
+    if isinstance(o, Decimal): return "FLOAT:"+str(o)
+    return JSONEncoder_olddefault(self, o)
+json.JSONEncoder.default = JSONEncoder_newdefault
+
+def jsonCleanup(json):
+  return re.sub(r'"FLOAT:([0-9\.]+)"', r'\1', json)
 
 # Setup our base data holders.
 metrics = [
@@ -178,7 +196,35 @@ for row in c.fetchall():
     deepadd(data, allAgencies, 'metrics', metric, quarter, tier, row[metric])
     deepadd(data, allAgencies, 'metrics', metric, quarter, 'total', row[metric])
 
-print( json.dumps(data) )
+
+# 3. Calculate our cost savings
+
+c.execute('''
+SELECT *
+FROM stratplans
+WHERE type=:type
+GROUP BY agency
+ORDER BY importDate DESC
+''', {'type': 'costSavings'})
+
+for row in c.fetchall():
+  for field,value in dict(row).items():
+
+    match = re.match(r'^fy([0-9]{2})([a-zA-Z_]+)$', field);
+    if match != None and value != None:
+      year = 2000 + int(match.group(1))
+      type = match.group(2)
+
+      # Convert our value to a safe decimal instead of a float.
+      # https://github.com/ombegov/dcoi/issues/6
+      value = Decimal(value)
+
+      deepadd(data, row['agency'], 'savings', year, type, value)
+      deepadd(data, allAgencies, 'savings', year, type, value)
+
+
+print( jsonCleanup(json.dumps(data)) )
+# TODO: Maybe export a file instead of just printing?
 
 #conn.commit()
 conn.close()
@@ -222,7 +268,14 @@ Example JSON format (numbers are made up!)
       }
     },
     "savings": {
-      "2018 Q4": 1000
+      "2017": {
+        "planned": 300,
+        "actual": 600
+      },
+      "2018": {
+        "planned": 100,
+        "actual": 500
+      }
     },
     "metrics": {
       "virtualization": {

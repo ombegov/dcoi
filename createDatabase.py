@@ -42,20 +42,22 @@ c.execute('''
   )
 ''')
 
+# We store our floats as TEXT. See https://github.com/ombegov/dcoi/issues/6
 c.execute('''
   CREATE TABLE IF NOT EXISTS stratplans (
+    agency TEXT,
     importDate INTEGER,
     type TEXT,
-    fy16Planned REAL,
-    fy16Achieved REAL,
-    fy17Planned REAL,
-    fy17Achieved REAL,
-    fy18Planned REAL,
-    fy18Achieved REAL,
-    fy19Planned REAL,
-    fy19Achieved REAL,
-    fy20Planned REAL,
-    fy20Achieved REAL,
+    fy16Planned TEXT,
+    fy16Achieved TEXT,
+    fy17Planned TEXT,
+    fy17Achieved TEXT,
+    fy18Planned TEXT,
+    fy18Achieved TEXT,
+    fy19Planned TEXT,
+    fy19Achieved TEXT,
+    fy20Planned TEXT,
+    fy20Achieved TEXT,
     explanation TEXT,
     costsOfClosures TEXT,
     costsOfOptimization TEXT,
