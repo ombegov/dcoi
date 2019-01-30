@@ -65,6 +65,10 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
     if row.get('ownership type', '').lower() not in map(str.lower, validOwnershipTypes):
       errors.append('Ownership Type value must be one of "' + '", "'.join(validOwnershipTypes) + '".')
 
+    if row.get('ownership type', '').lower() == 'Using Cloud Provider'.lower():
+      if row.get('data center tier', '').lower() != 'Using Cloud Provider'.lower():
+        errors.append('Data Center Tier must be "Using Cloud Provider" if Ownership Type is "Using Cloud Provider".')
+
     if row.get('key mission facility', '').lower() == 'yes':
       if not row.get('key mission facility type'):
         errors.append('Key Mission Facilities must have a Key Mission Facility Type.')
