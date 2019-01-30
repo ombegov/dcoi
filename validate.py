@@ -22,6 +22,7 @@ validRecordValidity = ['Invalid Facility', 'Valid Facility']
 validTiers = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4']
 validKMFTypes = ['Mission', 'Processing', 'Control', 'Location', 'Legal', 'Other']
 validOwnershipTypes = ['Agency Owned', 'Colocation', 'Outsourcing', 'Using Cloud Provider']
+validInterAgencySharedServicesPosition = ['Provider', 'Tenant', 'None']
 
 # Lowercase the field keys by updating the header row, for maximum compatiblity.
 def lower_headings(iterator):
@@ -68,6 +69,16 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
     if row.get('ownership type', '').lower() == 'Using Cloud Provider'.lower():
       if row.get('data center tier', '').lower() != 'Using Cloud Provider'.lower():
         errors.append('Data Center Tier must be "Using Cloud Provider" if Ownership Type is "Using Cloud Provider".')
+
+    if row.get('ownership type', '').lower() == 'Colocation'.lower():
+      if row.get('inter-agency shared services position', '') == '':
+        errors.append('Inter-Agency Shared Services Position must not be blank if Ownership Type is "Colocation".')
+
+    if row.get('inter-agency shared services position', '') != '' and \
+          row.get('inter-agency shared services position', '').lower() not in map(str.lower, validInterAgencySharedServicesPosition):
+      errors.append('If not blank, Inter-Agency Shared Services Position value must be one of "{}"; "{}" is given.'.format(
+            '", "'.join(validInterAgencySharedServicesPosition), row.get('inter-agency shared services position')
+      ))
 
     if row.get('key mission facility', '').lower() == 'yes':
       if not row.get('key mission facility type'):
