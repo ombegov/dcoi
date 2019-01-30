@@ -171,7 +171,7 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
       warnings.append('Key Mission Facility Type should only be present if Key Mission Facility is "Yes"')
     
     if row.get('key mission facility') == 'Yes':
-      if row.get('data center tier') not in validTiers:
+      if row.get('data center tier', '').lower() not in validTiers:
         warnings.append('Key Mission Facilities should not be non-tiered data centers.')
         
       if row.get('ownership type') != 'Agency Owned':
