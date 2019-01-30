@@ -25,7 +25,7 @@ validKMFTypes = ['mission', 'processing', 'control', 'location', 'legal', 'other
 def lower_headings(iterator):
     return itertools.chain([next(iterator).lower()], iterator)
 
-with open(filename, 'r') as datafile:
+with open(filename, 'r', encoding='utf-8-sig') as datafile:
   reader = csv.DictReader(lower_headings(datafile))
   stats = {
     'record_total': 0,
