@@ -93,10 +93,10 @@ for agency in agencies:
   print(agency, planFile)
 
   try:
-    # Give at least two seconds for slower agencies to respond
-    r = requests.get(planFile, timeout=2)
-  except requests.exceptions.Timeout:
-    print('! Cannot download file. (timeout)')
+    # Give at least ten seconds for slower agencies to respond
+    r = requests.get(planFile, timeout=10, headers=headers)
+  except:
+    print('! Cannot download file. {}'.format(sys.exc_info()[0]))
     missingAgencies.append(agency)
     continue
 
@@ -127,6 +127,7 @@ for agency in agencies:
 
       # Holder for our data to put into the database.
       insertData = {
+        'agency': agency,
         'importDate': today,
         'type': type
       }
