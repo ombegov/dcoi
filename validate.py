@@ -21,6 +21,7 @@ validClosingStages = ['Closed', 'Migration Execution', 'Not closing']
 validRecordValidity = ['Invalid Facility', 'Valid Facility']
 validTiers = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4']
 validKMFTypes = ['Mission', 'Processing', 'Control', 'Location', 'Legal', 'Other']
+validOwnershipTypes = ['Agency Owned', 'Colocation', 'Outsourcing', 'Using Cloud Provider']
 
 # Lowercase the field keys by updating the header row, for maximum compatiblity.
 def lower_headings(iterator):
@@ -60,7 +61,10 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
     if row.get('record validity', '').lower() == 'invalid facility':
       if row.get('closing stage').lower() == 'closed':
         errors.append('Record Validity cannot be "Invalid Facility" if Closing Stage is "Closed".')
-      
+
+    if row.get('ownership type', '').lower() not in map(str.lower, validOwnershipTypes):
+      errors.append('Ownership Type value must be one of "' + '", "'.join(validOwnershipTypes) + '".')
+
     if row.get('key mission facility', '').lower() == 'yes':
       if not row.get('key mission facility type'):
         errors.append('Key Mission Facilities must have a Key Mission Facility Type.')
