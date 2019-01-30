@@ -89,7 +89,7 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
               errors.append('Closing Quarter must not be blank if Closing Stage is not "Not Closing"')
 
         except ValueError:
-          errors.append('Closing Stage value must be one of [' + ', '.join(validClosingStages) + ']')
+          errors.append('Closing Stage value must be one of "' + '", "'.join(validClosingStages) + '".')
 
 
       if row.get('key mission facility') == 'Yes':
