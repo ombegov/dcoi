@@ -17,10 +17,10 @@ print ('Filename: ', filename)
 
 hasErrors = False
 hasWarnings = False
-validClosingStages = ['closed', 'migration execution', 'not closing']
-validRecordValidity = ['invalid facility', 'valid facility']
-validTiers = ['tier 1', 'tier 2', 'tier 3', 'tier 4']
-validKMFTypes = ['mission', 'processing', 'control', 'location', 'legal', 'other']
+validClosingStages = ['Closed', 'Migration Execution', 'Not closing']
+validRecordValidity = ['Invalid Facility', 'Valid Facility']
+validTiers = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4']
+validKMFTypes = ['Mission', 'Processing', 'Control', 'Location', 'Legal', 'Other']
 
 # Lowercase the field keys by updating the header row, for maximum compatiblity.
 def lower_headings(iterator):
@@ -54,14 +54,14 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
       if not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
         errors.append('Data Center ID must be DCOI-DC-#####. Or leave blank for new data centers.')
 
-    if row.get('record validity', '').lower() not in validRecordValidity:
+    if row.get('record validity', '').lower() not in map(str.lower, validRecordValidity):
       errors.append('Record Validity value must be one of "' + '", "'.join(validRecordValidity) + '".')
       
     if row.get('key mission facility') == 'Yes':
       if not row.get('key mission facility type'):
         errors.append('Key Mission Facilities must have a Key Mission Facility Type.')
         
-      elif row.get('key mission facility type', '').lower() not in validKMFTypes:
+      elif row.get('key mission facility type', '').lower() not in map(str.lower, validKMFTypes):
         errors.append('Key Mission Facilities must have a Key Mission Facility Type, "{}" given.'.format(row.get('key mission facility type')))
         
       elif row.get('key mission facility type', '').lower() == 'legal' and not row.get('comments'):
@@ -80,7 +80,7 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
         errors.append('Closing Stage must not be blank.')
       else:
         try:
-          validClosingStages.index(row.get('closing stage', '').lower())
+          assert row.get('closing stage', '').lower() in map(str.lower, validClosingStages)
 
           if row.get('closing stage', '').lower() != 'not closing':
             if not row.get('closing fiscal year'):
@@ -89,7 +89,7 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
             if not row.get('closing quarter'):
               errors.append('Closing Quarter must not be blank if Closing Stage is not "Not Closing"')
 
-        except ValueError:
+        except AssertionError:
           errors.append('Closing Stage value must be one of "' + '", "'.join(validClosingStages) + '".')
 
 
@@ -150,7 +150,7 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
     if (row.get('record validity') == 'Valid Facility' and
         row.get('closing stage') != 'Closed' and
         row.get('ownership type') == 'Agency Owned' and
-        row.get('data center tier', '').lower() not in validTiers):
+        row.get('data center tier', '').lower() not in map(str.lower, validTiers)):
       warnings.append('Only tiered data centers need to be reported, marked as "{}"'.format(row.get('data center tier')))
         
     
@@ -171,7 +171,7 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
       warnings.append('Key Mission Facility Type should only be present if Key Mission Facility is "Yes"')
     
     if row.get('key mission facility') == 'Yes':
-      if row.get('data center tier', '').lower() not in validTiers:
+      if row.get('data center tier', '').lower() not in map(str.lower, validTiers):
         warnings.append('Key Mission Facilities should not be non-tiered data centers.')
         
       if row.get('ownership type') != 'Agency Owned':
