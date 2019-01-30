@@ -63,6 +63,9 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
       elif row.get('key mission facility type', '').lower() not in validKMFTypes:
         errors.append('Key Mission Facilities must have a Key Mission Facility Type, "{}" given.'.format(row.get('key mission facility type')))
         
+      elif row.get('key mission facility type', '').lower() == 'legal' and not row.get('comments'):
+        errors.append('Key Mission Facilities of Type "legal" must include the statute or regulation in the Comments field.')
+
       elif row.get('key mission facility type', '').lower() == 'other' and not row.get('comments'):
         errors.append('Key Mission Facilities of Type "other" must have an explanation in the Comments field.')
 
