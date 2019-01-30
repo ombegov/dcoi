@@ -84,16 +84,16 @@ baseData = {
   'metrics': {}
 }
 
+data = {
+  'All Agencies': copy.deepcopy(baseData)
+}
+
 for metric in metrics:
   baseData['metrics'][metric] = {}
 
 allAgencies = 'All Agencies'
 
 tiers = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4']
-
-data = {
-  'All Agencies': copy.deepcopy(baseData)
-}
 
 
 conn = sqlite3.connect(config.DB_CONFIG['file'])
@@ -174,7 +174,7 @@ SUM(HPCCount) AS hpcs,
 SUM(serverCount) AS servers,
 SUM(virtualHostCount) AS virtualization
 FROM datacenters
-WHERE closingStage != 'Closed'
+WHERE closingStage = 'Not Closed'
 AND ownershipType = 'Agency Owned'
 GROUP BY agency, year, quarter, tier
 ORDER BY agency, year, quarter, tier
