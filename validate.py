@@ -23,6 +23,7 @@ validTiers = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4']
 validKMFTypes = ['Mission', 'Processing', 'Control', 'Location', 'Legal', 'Other']
 validOwnershipTypes = ['Agency Owned', 'Colocation', 'Outsourcing', 'Using Cloud Provider']
 validInterAgencySharedServicesPosition = ['Provider', 'Tenant', 'None']
+validCountry = ['U.S.', 'Outside U.S.']
 
 # Lowercase the field keys by updating the header row, for maximum compatiblity.
 def lower_headings(iterator):
@@ -79,6 +80,9 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
       errors.append('If not blank, Inter-Agency Shared Services Position value must be one of "{}"; "{}" is given.'.format(
             '", "'.join(validInterAgencySharedServicesPosition), row.get('inter-agency shared services position')
       ))
+
+    if row.get('country', '') != '' and row.get('country', '').lower() not in map(str.lower, validCountry):
+      errors.append('If not blank, Country value must be one of "{}"; "{}" is given.'.format('", "'.join(validCountry), row.get('country')))
 
     if row.get('key mission facility', '').lower() == 'yes':
       if not row.get('key mission facility type'):
