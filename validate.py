@@ -56,6 +56,10 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
 
     if row.get('record validity', '').lower() not in map(str.lower, validRecordValidity):
       errors.append('Record Validity value must be one of "' + '", "'.join(validRecordValidity) + '".')
+
+    if row.get('record validity', '').lower() == 'invalid facility':
+      if row.get('closing stage').lower() == 'closed':
+        errors.append('Record Validity cannot be "Invalid Facility" if Closing Stage is "Closed".')
       
     if row.get('key mission facility') == 'Yes':
       if not row.get('key mission facility type'):
