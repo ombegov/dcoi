@@ -18,6 +18,7 @@ print ('Filename: ', filename)
 hasErrors = False
 hasWarnings = False
 validClosingStages = ['closed', 'migration execution', 'not closing']
+validRecordValidity = ['invalid facility', 'valid facility']
 validTiers = ['tier 1', 'tier 2', 'tier 3', 'tier 4']
 validKMFTypes = ['mission', 'processing', 'control', 'location', 'legal', 'other']
 
@@ -53,8 +54,8 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
       if not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
         errors.append('Data Center ID must be DCOI-DC-#####. Or leave blank for new data centers.')
 
-    if not row.get('record validity'):
-      errors.append('Record Validity must not be blank.')
+    if row.get('record validity', '').lower() not in validRecordValidity:
+      errors.append('Record Validity value must be one of "' + '", "'.join(validRecordValidity) + '".')
       
     if row.get('key mission facility') == 'Yes':
       if not row.get('key mission facility type'):
