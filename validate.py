@@ -19,7 +19,7 @@ hasErrors = False
 hasWarnings = False
 validClosingStages = ['Closed', 'Migration Execution', 'Not closing']
 validRecordValidity = ['Invalid Facility', 'Valid Facility']
-validTiers = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4']
+validTiers = ['Non-Tiered', 'Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Unknown', 'Using Cloud Provider']
 validKMFTypes = ['Mission', 'Processing', 'Control', 'Location', 'Legal', 'Other']
 validOwnershipTypes = ['Agency Owned', 'Colocation', 'Outsourcing', 'Using Cloud Provider']
 validInterAgencySharedServicesPosition = ['Provider', 'Tenant', 'None']
@@ -83,6 +83,9 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
 
     if row.get('country', '') != '' and row.get('country', '').lower() not in map(str.lower, validCountry):
       errors.append('If not blank, Country value must be one of "{}"; "{}" is given.'.format('", "'.join(validCountry), row.get('country')))
+
+    if row.get('data center tier', '').lower() not in map(str.lower, validTiers):
+      errors.append('Data Center Tier value must be one of "{}"; "{}" is given.'.format('", "'.join(validTiers), row.get('data center tier')))
 
     if row.get('key mission facility', '').lower() == 'yes':
       if not row.get('key mission facility type'):
