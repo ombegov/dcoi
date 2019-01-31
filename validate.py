@@ -24,6 +24,7 @@ validKMFTypes = ['Mission', 'Processing', 'Control', 'Location', 'Legal', 'Other
 validOwnershipTypes = ['Agency Owned', 'Colocation', 'Outsourcing', 'Using Cloud Provider']
 validInterAgencySharedServicesPosition = ['Provider', 'Tenant', 'None']
 validCountry = ['U.S.', 'Outside U.S.']
+validKeyMissionFacility = ['Yes', 'No']
 
 # Lowercase the field keys by updating the header row, for maximum compatiblity.
 def lower_headings(iterator):
@@ -111,6 +112,8 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
     check_values('Country', validCountry)
 
     check_required('Data Center Tier', validTiers)
+
+    check_required('Key Mission Facility', validKeyMissionFacility)
 
     if row.get('key mission facility', '').lower() == 'yes':
       if not row.get('key mission facility type'):
