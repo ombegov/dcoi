@@ -35,12 +35,14 @@ def lower_headings(iterator):
 
 # Check required field with a list of valid values
 def check_required(name, msg=''):
+  check_values(name, msg)
+
   if special_required and name.lower() not in special_required:
     return
 
+  validValues = valids.get(name, [])
   result = ''
   value = row.get(name.lower(), '')
-  validValues = valids.get(name, [])
 
   if validValues:
     if value.lower() not in map(str.lower, validValues):
@@ -56,9 +58,12 @@ def check_required(name, msg=''):
 
 # Check optional field with a list of valid values
 def check_values(name, msg=''):
+  validValues = valids.get(name, [])
+  if not validValues:
+    return
+
   result = ''
   value = row.get(name.lower(), '')
-  validValues = valids.get(name, [])
 
   if value.lower() != '' and value.lower() not in map(str.lower, validValues):
     if msg:
