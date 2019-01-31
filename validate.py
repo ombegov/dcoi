@@ -4,6 +4,7 @@ import csv
 import sys
 import itertools
 import re
+import io
 
 try:
   filename = sys.argv[1]
@@ -69,7 +70,7 @@ def check_values(name, validValues, msg=''):
 
   return
 
-with open(filename, 'r', encoding='utf-8-sig') as datafile:
+with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
   reader = csv.DictReader(lower_headings(datafile))
   stats = {
     'record_total': 0,

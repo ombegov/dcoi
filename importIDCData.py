@@ -11,6 +11,7 @@ import itertools
 import sqlite3
 import argparse
 import re
+import io
 
 import config
 
@@ -71,7 +72,7 @@ def import_file(filename, q, c):
   quarter = int(quarter)
   year = int(year)
 
-  with open(filename, 'r', encoding='utf-8-sig') as datafile:
+  with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     reader = csv.DictReader(lower_headings(datafile))
     for row in reader:
 
