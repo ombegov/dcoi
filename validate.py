@@ -40,7 +40,16 @@ valids = {
     "pattern":re.compile('^(0*[1-9][0-9]*(\.[0-9]+)?|0+\.[0-9]*[1-9][0-9]*)$'),
     "msg": 'must be a decimal value greater than 0',
   },
+  "Underutilized Servers": {
+    "pattern":re.compile('^[0-9]*$'),
+    "msg": 'must be an integer value greater than or equal to 0',
+  },
+  "Actual Hours of Facility Downtime": {
+    "pattern":re.compile('^[0-9]*$'),
+    "msg": 'must be an integer value greater than or equal to 0',
+  },
 }
+
 
 # Lowercase the field keys by updating the header row, for maximum compatiblity.
 def lower_headings(iterator):
@@ -78,7 +87,7 @@ def check_values(name, msg=''):
 
   if isinstance(validValues, dict):
     if not validValues['pattern'].match(value):
-      result = msg or (name + ' ' + validValues['msg'] + '.')
+      result = msg or (name + ' ' + validValues['msg'] + '. "' + value + '" is given.')
   else: # validValues is a list of valid values
     if value.lower() not in map(str.lower, validValues):
       result = 'If not blank, {} value must be one of "{}"; "{}" is given.'.format(
@@ -112,7 +121,7 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     if row.get('record validity', '').lower() == 'invalid facility':
       special_required = ['agency abbreviation', 'component', 'data center id', 'record validity']
 
-    elif row.get('ownership type', '').lower() == 'agency owned':
+    elif row.get('ownership type', '').lower() != 'agency owned':
       special_required = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage']
 
     elif row.get('inter-agency shared services position', '').lower() == 'tenant':
@@ -177,6 +186,9 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
       if float(row.get('avg electricity usage')) < float(row.get('avg it electricity usage')):
         errors.append('Avg IT Electricity Usage must be less than or equal to Avg Electricity Usage.')
 
+    check_required('Underutilized Servers')
+    check_required('Actual Hours of Facility Downtime')
+
     # The data centers that are still targets for optimization - Valid, Agency-Owned, Open, non-Tenant.
     if (row.get('record validity', '').lower() == 'valid facility' and
         row.get('ownership type', '').lower() == 'agency owned' and
@@ -213,16 +225,6 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
 
         if not row.get('data center tier'):
           errors.append('Data Center Tier must not be blank.')
-
-        if not row.get('electricity is metered'):
-          errors.append('Electricity is Metered must not be blank.')
-
-        elif row.get('electricity is metered', '').lower() == 'yes':
-          if not row.get('avg electricity usage'):
-            errors.append('Avg Electricity Usage must not be blank if Electricity Is Metered = Yes.')
-
-          if not row.get('avg it electricity usage'):
-            errors.append('Avg IT Electricity Usage must not be blank if Electricity Is Metered = Yes.')
 
         # The following numeric fields may reasonably be "0", so we must check for blanks instead of "not".
         if row.get('underutilized servers') == '':
