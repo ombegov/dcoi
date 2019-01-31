@@ -32,6 +32,9 @@ def lower_headings(iterator):
 
 # Check required field with a list of valid values
 def check_required(name, validValues=[], msg=''):
+  if special_required and name.lower() not in special_required:
+    return
+
   result = ''
   value = row.get(name.lower(), '')
 
@@ -44,6 +47,8 @@ def check_required(name, validValues=[], msg=''):
 
   if result:
     errors.append(result)
+
+  return
 
 # Check optional field with a list of valid values
 def check_values(name, validValues, msg=''):
@@ -62,6 +67,8 @@ def check_values(name, validValues, msg=''):
   if result:
     errors.append(result)
 
+  return
+
 with open(filename, 'r', encoding='utf-8-sig') as datafile:
   reader = csv.DictReader(lower_headings(datafile))
   stats = {
@@ -76,6 +83,21 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
     errors = []
     warnings = []
 
+    ###
+    # Special condition for required fields.
+    ###
+    special_required = []
+    if row.get('record validity', '').lower() == 'invalid facility':
+      special_required = ['agency abbreviation', 'component', 'data center id', 'record validity']
+
+    elif row.get('ownership type', '').lower() == 'agency owned':
+      special_required = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage']
+
+    elif row.get('inter-agency shared services position', '').lower() == 'tenant':
+      special_required = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage', 'ownership type']
+
+    elif row.get('key mission facility', '').lower() == 'yes':
+      special_required = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage', 'ownership type', 'key mission facility type']
 
     ###
     # Data acceptance rules. These should match the IDC instructions.
