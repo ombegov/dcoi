@@ -18,14 +18,16 @@ print ('Filename: ', filename)
 
 hasErrors = False
 hasWarnings = False
-validClosingStages = ['Closed', 'Migration Execution', 'Not closing']
-validRecordValidity = ['Invalid Facility', 'Valid Facility']
-validTiers = ['Non-Tiered', 'Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Unknown', 'Using Cloud Provider']
-validKMFTypes = ['Mission', 'Processing', 'Control', 'Location', 'Legal', 'Other']
-validOwnershipTypes = ['Agency Owned', 'Colocation', 'Outsourcing', 'Using Cloud Provider']
-validInterAgencySharedServicesPosition = ['Provider', 'Tenant', 'None']
-validCountry = ['U.S.', 'Outside U.S.']
-validKeyMissionFacility = ['Yes', 'No']
+valids = {
+  "Closing Stage": ['Closed', 'Migration Execution', 'Not closing'],
+  "Record Validity": ['Invalid Facility', 'Valid Facility'],
+  "Data Center Tier": ['Non-Tiered', 'Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Unknown', 'Using Cloud Provider'],
+  "Key Mission Facility Type": ['Mission', 'Processing', 'Control', 'Location', 'Legal', 'Other'],
+  "Ownership Type": ['Agency Owned', 'Colocation', 'Outsourcing', 'Using Cloud Provider'],
+  "Inter-Agency Shared Services Position": ['Provider', 'Tenant', 'None'],
+  "Country": ['U.S.', 'Outside U.S.'],
+  "Key Mission Facility": ['Yes', 'No'],
+}
 
 # Lowercase the field keys by updating the header row, for maximum compatiblity.
 def lower_headings(iterator):
@@ -114,13 +116,13 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
       if not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
         errors.append('Data Center ID must be DCOI-DC-#####. Or leave blank for new data centers.')
 
-    check_required('Record Validity', validRecordValidity)
+    check_required('Record Validity', valids['Record Validity'])
 
     if row.get('record validity', '').lower() == 'invalid facility':
       if row.get('closing stage').lower() == 'closed':
         errors.append('Record Validity cannot be "Invalid Facility" if Closing Stage is "Closed".')
 
-    check_required('Ownership Type', validOwnershipTypes)
+    check_required('Ownership Type', valids['Ownership Type'])
 
     if row.get('ownership type', '').lower() == 'Using Cloud Provider'.lower():
       if row.get('data center tier', '').lower() != 'Using Cloud Provider'.lower():
@@ -130,19 +132,19 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
       msg = 'Inter-Agency Shared Services Position must not be blank if Ownership Type is "Colocation".'
       check_required('Inter-Agency Shared Services Position', msg=msg)
 
-    check_values('Inter-Agency Shared Services Position', validInterAgencySharedServicesPosition)
+    check_values('Inter-Agency Shared Services Position', valids['Inter-Agency Shared Services Position'])
 
-    check_values('Country', validCountry)
+    check_values('Country', valids['Country'])
 
-    check_required('Data Center Tier', validTiers)
+    check_required('Data Center Tier', valids['Data Center Tier'])
 
-    check_required('Key Mission Facility', validKeyMissionFacility)
+    check_required('Key Mission Facility', valids['Key Mission Facility'])
 
     if row.get('key mission facility', '').lower() == 'yes':
       if not row.get('key mission facility type'):
         errors.append('Key Mission Facilities must have a Key Mission Facility Type.')
         
-      elif row.get('key mission facility type', '').lower() not in map(str.lower, validKMFTypes):
+      elif row.get('key mission facility type', '').lower() not in map(str.lower, valids['Key Mission Facility Type']):
         errors.append('Key Mission Facilities must have a Key Mission Facility Type, "{}" given.'.format(row.get('key mission facility type')))
         
       elif row.get('key mission facility type', '').lower() == 'legal' and not row.get('comments'):
@@ -161,7 +163,7 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
         errors.append('Closing Stage must not be blank.')
       else:
         try:
-          assert row.get('closing stage', '').lower() in map(str.lower, validClosingStages)
+          assert row.get('closing stage', '').lower() in map(str.lower, valids['Closing Stage'])
 
           if row.get('closing stage', '').lower() != 'not closing':
             if not row.get('closing fiscal year'):
@@ -171,7 +173,7 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
               errors.append('Closing Quarter must not be blank if Closing Stage is not "Not Closing"')
 
         except AssertionError:
-          errors.append('Closing Stage value must be one of "' + '", "'.join(validClosingStages) + '".')
+          errors.append('Closing Stage value must be one of "' + '", "'.join(valids['Closing Stage']) + '".')
 
 
       if row.get('key mission facility', '').lower() == 'yes':
@@ -231,7 +233,7 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     if (row.get('record validity', '').lower() == 'valid facility' and
         row.get('closing stage', '').lower() != 'closed' and
         row.get('ownership type', '').lower() == 'agency owned' and
-        row.get('data center tier', '').lower() not in map(str.lower, validTiers)):
+        row.get('data center tier', '').lower() not in map(str.lower, valids['Data Center Tier'])):
       warnings.append('Only tiered data centers need to be reported, marked as "{}"'.format(row.get('data center tier')))
         
     
@@ -252,7 +254,7 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
       warnings.append('Key Mission Facility Type should only be present if Key Mission Facility is "Yes"')
     
     if row.get('key mission facility', '').lower() == 'yes':
-      if row.get('data center tier', '').lower() not in map(str.lower, validTiers):
+      if row.get('data center tier', '').lower() not in map(str.lower, valids['Data Center Tier']):
         warnings.append('Key Mission Facilities should not be non-tiered data centers.')
         
       if row.get('ownership type', '').lower() != 'agency owned':
