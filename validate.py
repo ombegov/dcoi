@@ -61,7 +61,7 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
       if row.get('closing stage').lower() == 'closed':
         errors.append('Record Validity cannot be "Invalid Facility" if Closing Stage is "Closed".')
       
-    if row.get('key mission facility') == 'Yes':
+    if row.get('key mission facility', '').lower() == 'yes':
       if not row.get('key mission facility type'):
         errors.append('Key Mission Facilities must have a Key Mission Facility Type.')
         
@@ -75,10 +75,10 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
         errors.append('Key Mission Facilities of Type "other" must have an explanation in the Comments field.')
 
     # The data centers that are still targets for optimization - Valid, Agency-Owned, Open, non-Tenant.
-    if (row.get('record validity') == 'Valid Facility' and
-        row.get('ownership type') == 'Agency Owned' and
-        row.get('closing stage') != 'Closed' and
-        row.get('inter-agency shared services position') != 'Tenant'):
+    if (row.get('record validity', '').lower() == 'valid facility' and
+        row.get('ownership type', '').lower() == 'agency owned' and
+        row.get('closing stage', '').lower() != 'closed' and
+        row.get('inter-agency shared services position', '').lower() != 'tenant'):
 
       if not row.get('closing stage'):
         errors.append('Closing Stage must not be blank.')
@@ -97,7 +97,7 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
           errors.append('Closing Stage value must be one of "' + '", "'.join(validClosingStages) + '".')
 
 
-      if row.get('key mission facility') == 'Yes':
+      if row.get('key mission facility', '').lower() == 'yes':
         if not row.get('key mission facility type'):
           errors.append('Key Mission Facility Type must not be blank for all Key Mission Facilities')
 
@@ -114,7 +114,7 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
         if not row.get('electricity is metered'):
           errors.append('Electricity is Metered must not be blank.')
 
-        elif row.get('electricity is metered') == 'Yes':
+        elif row.get('electricity is metered', '').lower() == 'yes':
           if not row.get('avg electricity usage'):
             errors.append('Avg Electricity Usage must not be blank if Electricity Is Metered = Yes.')
 
@@ -151,9 +151,9 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
     # Data validation rules. This should catch any bad data.
     ###
     
-    if (row.get('record validity') == 'Valid Facility' and
-        row.get('closing stage') != 'Closed' and
-        row.get('ownership type') == 'Agency Owned' and
+    if (row.get('record validity', '').lower() == 'valid facility' and
+        row.get('closing stage', '').lower() != 'closed' and
+        row.get('ownership type', '').lower() == 'agency owned' and
         row.get('data center tier', '').lower() not in map(str.lower, validTiers)):
       warnings.append('Only tiered data centers need to be reported, marked as "{}"'.format(row.get('data center tier')))
         
@@ -171,17 +171,17 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
 
 
     # Check for incorrect KMF reporting      
-    if row.get('key mission facility type') and row.get('key mission facility') != 'Yes':
+    if row.get('key mission facility type') and row.get('key mission facility', '').lower() != 'yes':
       warnings.append('Key Mission Facility Type should only be present if Key Mission Facility is "Yes"')
     
-    if row.get('key mission facility') == 'Yes':
+    if row.get('key mission facility', '').lower() == 'yes':
       if row.get('data center tier', '').lower() not in map(str.lower, validTiers):
         warnings.append('Key Mission Facilities should not be non-tiered data centers.')
         
-      if row.get('ownership type') != 'Agency Owned':
+      if row.get('ownership type', '').lower() != 'agency owned':
         warnings.append('Key Mission Facilities should only be agency-owned.')
   
-      if row.get('record validity') != 'Valid Facility':
+      if row.get('record validity', '').lower() != 'valid facility':
         warnings.append('Invalid facilities should not be Key Mission Facilities.')
         
     ###
