@@ -34,12 +34,13 @@ def lower_headings(iterator):
     return itertools.chain([next(iterator).lower()], iterator)
 
 # Check required field with a list of valid values
-def check_required(name, validValues=[], msg=''):
+def check_required(name, msg=''):
   if special_required and name.lower() not in special_required:
     return
 
   result = ''
   value = row.get(name.lower(), '')
+  validValues = valids.get(name, [])
 
   if validValues:
     if value.lower() not in map(str.lower, validValues):
@@ -54,9 +55,10 @@ def check_required(name, validValues=[], msg=''):
   return
 
 # Check optional field with a list of valid values
-def check_values(name, validValues, msg=''):
+def check_values(name, msg=''):
   result = ''
   value = row.get(name.lower(), '')
+  validValues = valids.get(name, [])
 
   if value.lower() != '' and value.lower() not in map(str.lower, validValues):
     if msg:
@@ -116,13 +118,13 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
       if not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
         errors.append('Data Center ID must be DCOI-DC-#####. Or leave blank for new data centers.')
 
-    check_required('Record Validity', valids['Record Validity'])
+    check_required('Record Validity')
 
     if row.get('record validity', '').lower() == 'invalid facility':
       if row.get('closing stage').lower() == 'closed':
         errors.append('Record Validity cannot be "Invalid Facility" if Closing Stage is "Closed".')
 
-    check_required('Ownership Type', valids['Ownership Type'])
+    check_required('Ownership Type')
 
     if row.get('ownership type', '').lower() == 'Using Cloud Provider'.lower():
       if row.get('data center tier', '').lower() != 'Using Cloud Provider'.lower():
@@ -132,13 +134,13 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
       msg = 'Inter-Agency Shared Services Position must not be blank if Ownership Type is "Colocation".'
       check_required('Inter-Agency Shared Services Position', msg=msg)
 
-    check_values('Inter-Agency Shared Services Position', valids['Inter-Agency Shared Services Position'])
+    check_values('Inter-Agency Shared Services Position')
 
-    check_values('Country', valids['Country'])
+    check_values('Country')
 
-    check_required('Data Center Tier', valids['Data Center Tier'])
+    check_required('Data Center Tier')
 
-    check_required('Key Mission Facility', valids['Key Mission Facility'])
+    check_required('Key Mission Facility')
 
     if row.get('key mission facility', '').lower() == 'yes':
       if not row.get('key mission facility type'):
