@@ -29,6 +29,38 @@ validCountry = ['U.S.', 'Outside U.S.']
 def lower_headings(iterator):
     return itertools.chain([next(iterator).lower()], iterator)
 
+# Check required field with a list of valid values
+def check_required(name, validValues=[], msg=''):
+  result = ''
+  value = row.get(name.lower(), '')
+
+  if validValues:
+    if value.lower() not in map(str.lower, validValues):
+      result = msg or '{} value must be one of "{}"; "{}" is given.'.format(name,  '", "'.join(validValues), value)
+  else:
+    if value.lower() == '':
+      result = msg or '{} must not be blank.'.format(name)
+
+  if result:
+    errors.append(result)
+
+# Check optional field with a list of valid values
+def check_values(name, validValues, msg=''):
+  result = ''
+  value = row.get(name.lower(), '')
+
+  if value.lower() != '' and value.lower() not in map(str.lower, validValues):
+    if msg:
+      result = msg
+    else:
+      result = 'If not blank, {} value must be one of "{}"; "{}" is given.'.format(
+                name,
+                '", "'.join(validValues),
+                value)
+
+  if result:
+    errors.append(result)
+
 with open(filename, 'r', encoding='utf-8-sig') as datafile:
   reader = csv.DictReader(lower_headings(datafile))
   stats = {
@@ -42,6 +74,7 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
     num = reader.line_num
     errors = []
     warnings = []
+
 
     ###
     # Data acceptance rules. These should match the IDC instructions.
@@ -57,35 +90,27 @@ with open(filename, 'r', encoding='utf-8-sig') as datafile:
       if not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
         errors.append('Data Center ID must be DCOI-DC-#####. Or leave blank for new data centers.')
 
-    if row.get('record validity', '').lower() not in map(str.lower, validRecordValidity):
-      errors.append('Record Validity value must be one of "' + '", "'.join(validRecordValidity) + '".')
+    check_required('Record Validity', validRecordValidity)
 
     if row.get('record validity', '').lower() == 'invalid facility':
       if row.get('closing stage').lower() == 'closed':
         errors.append('Record Validity cannot be "Invalid Facility" if Closing Stage is "Closed".')
 
-    if row.get('ownership type', '').lower() not in map(str.lower, validOwnershipTypes):
-      errors.append('Ownership Type value must be one of "' + '", "'.join(validOwnershipTypes) + '".')
+    check_required('Ownership Type', validOwnershipTypes)
 
     if row.get('ownership type', '').lower() == 'Using Cloud Provider'.lower():
       if row.get('data center tier', '').lower() != 'Using Cloud Provider'.lower():
         errors.append('Data Center Tier must be "Using Cloud Provider" if Ownership Type is "Using Cloud Provider".')
 
     if row.get('ownership type', '').lower() == 'Colocation'.lower():
-      if row.get('inter-agency shared services position', '') == '':
-        errors.append('Inter-Agency Shared Services Position must not be blank if Ownership Type is "Colocation".')
+      msg = 'Inter-Agency Shared Services Position must not be blank if Ownership Type is "Colocation".'
+      check_required('Inter-Agency Shared Services Position', msg=msg)
 
-    if row.get('inter-agency shared services position', '') != '' and \
-          row.get('inter-agency shared services position', '').lower() not in map(str.lower, validInterAgencySharedServicesPosition):
-      errors.append('If not blank, Inter-Agency Shared Services Position value must be one of "{}"; "{}" is given.'.format(
-            '", "'.join(validInterAgencySharedServicesPosition), row.get('inter-agency shared services position')
-      ))
+    check_values('Inter-Agency Shared Services Position', validInterAgencySharedServicesPosition)
 
-    if row.get('country', '') != '' and row.get('country', '').lower() not in map(str.lower, validCountry):
-      errors.append('If not blank, Country value must be one of "{}"; "{}" is given.'.format('", "'.join(validCountry), row.get('country')))
+    check_values('Country', validCountry)
 
-    if row.get('data center tier', '').lower() not in map(str.lower, validTiers):
-      errors.append('Data Center Tier value must be one of "{}"; "{}" is given.'.format('", "'.join(validTiers), row.get('data center tier')))
+    check_required('Data Center Tier', validTiers)
 
     if row.get('key mission facility', '').lower() == 'yes':
       if not row.get('key mission facility type'):
