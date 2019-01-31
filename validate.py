@@ -36,6 +36,10 @@ valids = {
     "pattern":re.compile('^(0*[1-9][0-9]*(\.[0-9]+)?|0+\.[0-9]*[1-9][0-9]*)$'),
     "msg": 'must be a decimal value greater than 0',
   },
+  "Avg IT Electricity Usage": {
+    "pattern":re.compile('^(0*[1-9][0-9]*(\.[0-9]+)?|0+\.[0-9]*[1-9][0-9]*)$'),
+    "msg": 'must be a decimal value greater than 0',
+  },
 }
 
 # Lowercase the field keys by updating the header row, for maximum compatiblity.
@@ -162,8 +166,16 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     if row.get('electricity is metered', '').lower() == 'yes':
       msg = 'Avg Electricity Usage must not be blank if Electricity is Metered'
       check_required('Avg Electricity Usage')
+      msg = 'Avg IT Electricity Usage must not be blank if Electricity is Metered'
+      check_required('Avg IT Electricity Usage')
+
     else:
       check_values('Avg Electricity Usage')
+      check_values('Avg IT Electricity Usage')
+
+    if row.get('avg electricity usage', '').replace('.','',1).isdigit() and row.get('avg it electricity usage', '').replace('.','',1).isdigit():
+      if float(row.get('avg electricity usage')) < float(row.get('avg it electricity usage')):
+        errors.append('Avg IT Electricity Usage must be less than or equal to Avg Electricity Usage.')
 
     # The data centers that are still targets for optimization - Valid, Agency-Owned, Open, non-Tenant.
     if (row.get('record validity', '').lower() == 'valid facility' and
