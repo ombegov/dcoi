@@ -113,11 +113,8 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     # Data acceptance rules. These should match the IDC instructions.
     ###
 
-    if not row.get('agency abbreviation'):
-      errors.append('Agency Abbreviation must not be blank.')
-
-    if not row.get('component'):
-      errors.append('Component must not be blank.')
+    check_required('Agency Abbreviation')
+    check_required('Component')
 
     if row.get('data center id'):
       if not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
@@ -140,25 +137,16 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
       check_required('Inter-Agency Shared Services Position', msg=msg)
 
     check_values('Inter-Agency Shared Services Position')
-
     check_values('Country')
-
     check_required('Data Center Tier')
-
     check_required('Key Mission Facility')
 
     if row.get('key mission facility', '').lower() == 'yes':
-      if not row.get('key mission facility type'):
-        errors.append('Key Mission Facilities must have a Key Mission Facility Type.')
-        
-      elif row.get('key mission facility type', '').lower() not in map(str.lower, valids['Key Mission Facility Type']):
-        errors.append('Key Mission Facilities must have a Key Mission Facility Type, "{}" given.'.format(row.get('key mission facility type')))
-        
-      elif row.get('key mission facility type', '').lower() == 'legal' and not row.get('comments'):
-        errors.append('Key Mission Facilities of Type "legal" must include the statute or regulation in the Comments field.')
+      msg = 'Key Mission Facilities must have a Key Mission Facility Type.'
+      check_required('Key Mission Facility Type')
 
-      elif row.get('key mission facility type', '').lower() == 'other' and not row.get('comments'):
-        errors.append('Key Mission Facilities of Type "other" must have an explanation in the Comments field.')
+    else:
+      check_values('Key Mission Facility Type')
 
     # The data centers that are still targets for optimization - Valid, Agency-Owned, Open, non-Tenant.
     if (row.get('record validity', '').lower() == 'valid facility' and
@@ -231,6 +219,14 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
 
         if row.get('total virtual hosts') == '':
           errors.append('Total Virtual Hosts must not be blank')
+
+    if row.get('key mission facility type', '').lower() == 'legal':
+      msg = 'Key Mission Facilities of Type "legal" must include the statute or regulation in the Comments field.'
+      check_required('Comments', msg)
+
+    elif row.get('key mission facility type', '').lower() == 'other':
+      msg = 'Key Mission Facilities of Type "other" must have an explanation in the Comments field.'
+      check_required('Comments', msg)
 
 
     ###
