@@ -26,7 +26,16 @@ valids = {
   "Ownership Type": ['Agency Owned', 'Colocation', 'Outsourcing', 'Using Cloud Provider'],
   "Inter-Agency Shared Services Position": ['Provider', 'Tenant', 'None'],
   "Country": ['U.S.', 'Outside U.S.'],
+  "Gross Floor Area": {
+    "pattern":re.compile('^(0*[1-9][0-9]*)$'),
+    "msg": 'must be an integer value greater than 0',
+  },
   "Key Mission Facility": ['Yes', 'No'],
+  "Electricity Is Metered": ['Yes', 'No'],
+  "Avg Electricity Usage": {
+    "pattern":re.compile('^(0*[1-9][0-9]*(\.[0-9]+)?|0+\.[0-9]*[1-9][0-9]*)$'),
+    "msg": 'must be a decimal value greater than 0',
+  },
 }
 
 # Lowercase the field keys by updating the header row, for maximum compatiblity.
@@ -40,16 +49,11 @@ def check_required(name, msg=''):
   if special_required and name.lower() not in special_required:
     return
 
-  validValues = valids.get(name, [])
   result = ''
   value = row.get(name.lower(), '')
 
-  if validValues:
-    if value.lower() not in map(str.lower, validValues):
-      result = msg or '{} value must be one of "{}"; "{}" is given.'.format(name,  '", "'.join(validValues), value)
-  else:
-    if value.lower() == '':
-      result = msg or '{} must not be blank.'.format(name)
+  if value.lower() == '':
+    result = msg or '{} must not be blank.'.format(name)
 
   if result:
     errors.append(result)
@@ -58,17 +62,21 @@ def check_required(name, msg=''):
 
 # Check optional field with a list of valid values
 def check_values(name, msg=''):
+  result = ''
+
   validValues = valids.get(name, [])
-  if not validValues:
+  if not validValues: # nothing to check afainst
     return
 
-  result = ''
   value = row.get(name.lower(), '')
+  if value.lower() == '': # nothing to check
+    return
 
-  if value.lower() != '' and value.lower() not in map(str.lower, validValues):
-    if msg:
-      result = msg
-    else:
+  if isinstance(validValues, dict):
+    if not validValues['pattern'].match(value):
+      result = msg or (name + ' ' + validValues['msg'] + '.')
+  else: # validValues is a list of valid values
+    if value.lower() not in map(str.lower, validValues):
       result = 'If not blank, {} value must be one of "{}"; "{}" is given.'.format(
                 name,
                 '", "'.join(validValues),
@@ -138,6 +146,7 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
 
     check_values('Inter-Agency Shared Services Position')
     check_values('Country')
+    check_required('Gross Floor Area')
     check_required('Data Center Tier')
     check_required('Key Mission Facility')
 
@@ -147,6 +156,14 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
 
     else:
       check_values('Key Mission Facility Type')
+
+    check_required('Electricity Is Metered')
+
+    if row.get('electricity is metered', '').lower() == 'yes':
+      msg = 'Avg Electricity Usage must not be blank if Electricity is Metered'
+      check_required('Avg Electricity Usage')
+    else:
+      check_values('Avg Electricity Usage')
 
     # The data centers that are still targets for optimization - Valid, Agency-Owned, Open, non-Tenant.
     if (row.get('record validity', '').lower() == 'valid facility' and
