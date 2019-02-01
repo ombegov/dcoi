@@ -68,6 +68,11 @@ valids = {
     "pattern":re.compile('^[0-9]*$'),
     "msg": 'must be an integer value greater than or equal to 0',
   },
+  "Closing Fiscal Year"{
+    "pattern":re.compile('^[0-9]*$'),
+    "msg": 'must be an integer value greater than or equal to 0',
+  },
+  "Closing Quarter": ['Q1', 'Q2', 'Q3', 'Q4']
 }
 
 
@@ -185,7 +190,7 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
 
     if row.get('key mission facility', '').lower() == 'yes':
       msg = 'Key Mission Facilities must have a Key Mission Facility Type.'
-      check_required('Key Mission Facility Type')
+      check_required('Key Mission Facility Type', msg=msg)
 
     else:
       check_values('Key Mission Facility Type')
@@ -194,9 +199,9 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
 
     if row.get('electricity is metered', '').lower() == 'yes':
       msg = 'Avg Electricity Usage must not be blank if Electricity is Metered'
-      check_required('Avg Electricity Usage')
+      check_required('Avg Electricity Usage', msg=msg)
       msg = 'Avg IT Electricity Usage must not be blank if Electricity is Metered'
-      check_required('Avg IT Electricity Usage')
+      check_required('Avg IT Electricity Usage', msg=msg)
 
     else:
       check_values('Avg Electricity Usage')
@@ -213,6 +218,17 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     check_required('Total Mainframes')
     check_required('Total HPC Cluster Nodes')
     check_required('Total Virtua Hosts')
+    check_required('Closing Stage')
+
+    if row.get('closing stage', '').lower() != 'not closing':
+      msg = 'Closing Fiscal Year must not be blank if Closing Stage is not "Not Closing"'
+      check_required('Closing Fiscal Year', msg)
+      msg = 'Closing Quarter must not be blank if Closing Stage is not "Not Closing"'
+      check_required('Closing Quarter', msg=msg)
+    else:
+      check_values('Closing Fiscal Year')
+      check_values('Closing Quarter')
+
 
     # The data centers that are still targets for optimization - Valid, Agency-Owned, Open, non-Tenant.
     if (row.get('record validity', '').lower() == 'valid facility' and
