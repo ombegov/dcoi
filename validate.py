@@ -48,6 +48,26 @@ valids = {
     "pattern":re.compile('^[0-9]*$'),
     "msg": 'must be an integer value greater than or equal to 0',
   },
+  "Planned Hours of Facility Availability": {
+    "pattern":re.compile('^[0-9]*$'),
+    "msg": 'must be an integer value greater than or equal to 0',
+  },
+  "Rack Count": {
+    "pattern":re.compile('^[0-9]*$'),
+    "msg": 'must be an integer value greater than or equal to 0',
+  },
+  "Total Mainframes": {
+    "pattern":re.compile('^[0-9]*$'),
+    "msg": 'must be an integer value greater than or equal to 0',
+  },
+  "Total HPC Cluster Nodes": {
+    "pattern":re.compile('^[0-9]*$'),
+    "msg": 'must be an integer value greater than or equal to 0',
+  },
+  "Total Virtua Hosts": {
+    "pattern":re.compile('^[0-9]*$'),
+    "msg": 'must be an integer value greater than or equal to 0',
+  },
 }
 
 
@@ -188,6 +208,11 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
 
     check_required('Underutilized Servers')
     check_required('Actual Hours of Facility Downtime')
+    check_required('Planned Hours of Facility Availability')
+    check_required('Rack Count')
+    check_required('Total Mainframes')
+    check_required('Total HPC Cluster Nodes')
+    check_required('Total Virtua Hosts')
 
     # The data centers that are still targets for optimization - Valid, Agency-Owned, Open, non-Tenant.
     if (row.get('record validity', '').lower() == 'valid facility' and
