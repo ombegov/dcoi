@@ -68,7 +68,7 @@ valids = {
     "pattern":re.compile('^[0-9]*$'),
     "msg": 'must be an integer value greater than or equal to 0',
   },
-  "Closing Fiscal Year"{
+  "Closing Fiscal Year": {
     "pattern":re.compile('^[0-9]*$'),
     "msg": 'must be an integer value greater than or equal to 0',
   },
