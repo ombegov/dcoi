@@ -40,7 +40,7 @@ VALID_FUNCTIONS = {
   'Rack Count': ['is_integer', 'equal_greater_0'],
   'Total Mainframes':['is_integer', 'equal_greater_0'],
   'Total HPC Cluster Nodes': ['is_integer', 'equal_greater_0'],
-  'Total Virtua Hosts': ['is_integer', 'equal_greater_0'],
+  'Total Virtual Hosts': ['is_integer', 'equal_greater_0'],
 }
 
 # Variables we will re-use
@@ -182,7 +182,7 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     for required_field in ['Agency Abbreviation', 'Component', 'Data Center Name', 'Record Validity',
         'Ownership Type', 'Gross Floor Area', 'Data Center Tier', 'Key Mission Facility', 'Electricity Is Metered',
         'Underutilized Servers', 'Actual Hours of Facility Downtime', 'Planned Hours of Facility Availability',
-        'Rack Count', 'Total Mainframes', 'Total HPC Cluster Nodes', 'Total Virtua Hosts', 'Closing Stage',
+        'Rack Count', 'Total Mainframes', 'Total HPC Cluster Nodes', 'Total Virtual Hosts', 'Closing Stage',
     ]:
       errors.extend(validate_required(row, required_field, specials))
 
