@@ -14,117 +14,135 @@ except IndexError:
 
 print ('Filename: ', filename)
 
+# Constant to define allowed values for a field
+VALID_VALUES = {
+  "Record Validity": ['Invalid Facility', 'Valid Facility'],
+  "Ownership Type": ['Agency Owned', 'Colocation', 'Outsourcing', 'Using Cloud Provider'],
+  "Inter-Agency Shared Services Position": ['Provider', 'Tenant', 'None'],
+  "Country": ['U.S.', 'Outside U.S.'],
+  "Data Center Tier": ['Non-Tiered', 'Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Unknown', 'Using Cloud Provider'],
+  "Key Mission Facility": ['Yes', 'No'],
+  "Key Mission Facility Type": ['Mission', 'Processing', 'Control', 'Location', 'Legal', 'Other'],
+  "Electricity Is Metered": ['Yes', 'No'],
+  "Closing Fiscal Year": [str(i) for i in range(2010, 2022)], # 2010 - 2021
+  "Closing Quarter": ['Q1', 'Q2', 'Q3', 'Q4'],
+  "Closing Stage": ['Closed', 'Migration Execution', 'Not closing'],
+}
+
+# Constant to define functions to check field value format
+VALID_FUNCTIONS = {
+  'Gross Floor Area': ['is_integer', 'greater_0'],
+  'Avg Electricity Usage': ['is_decimal', 'greater_0'],
+  'Avg IT Electricity Usage': ['is_decimal', 'greater_0'],
+  'Underutilized Servers': ['is_integer', 'equal_greater_0'],
+  'Actual Hours of Facility Downtime': ['is_integer', 'equal_greater_0'],
+  'Planned Hours of Facility Availability': ['is_integer', 'equal_greater_0'],
+  'Rack Count': ['is_integer', 'equal_greater_0'],
+  'Total Mainframes':['is_integer', 'equal_greater_0'],
+  'Total HPC Cluster Nodes': ['is_integer', 'equal_greater_0'],
+  'Total Virtua Hosts': ['is_integer', 'equal_greater_0'],
+}
+
 # Variables we will re-use
 
 hasErrors = False
 hasWarnings = False
-valids = {
-  "Closing Stage": ['Closed', 'Migration Execution', 'Not closing'],
-  "Record Validity": ['Invalid Facility', 'Valid Facility'],
-  "Data Center Tier": ['Non-Tiered', 'Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Unknown', 'Using Cloud Provider'],
-  "Key Mission Facility Type": ['Mission', 'Processing', 'Control', 'Location', 'Legal', 'Other'],
-  "Ownership Type": ['Agency Owned', 'Colocation', 'Outsourcing', 'Using Cloud Provider'],
-  "Inter-Agency Shared Services Position": ['Provider', 'Tenant', 'None'],
-  "Country": ['U.S.', 'Outside U.S.'],
-  "Gross Floor Area": {
-    "pattern":re.compile('^(0*[1-9][0-9]*)$'),
-    "msg": 'must be an integer value greater than 0',
-  },
-  "Key Mission Facility": ['Yes', 'No'],
-  "Electricity Is Metered": ['Yes', 'No'],
-  "Avg Electricity Usage": {
-    "pattern":re.compile('^(0*[1-9][0-9]*(\.[0-9]+)?|0+\.[0-9]*[1-9][0-9]*)$'),
-    "msg": 'must be a decimal value greater than 0',
-  },
-  "Avg IT Electricity Usage": {
-    "pattern":re.compile('^(0*[1-9][0-9]*(\.[0-9]+)?|0+\.[0-9]*[1-9][0-9]*)$'),
-    "msg": 'must be a decimal value greater than 0',
-  },
-  "Underutilized Servers": {
-    "pattern":re.compile('^[0-9]*$'),
-    "msg": 'must be an integer value greater than or equal to 0',
-  },
-  "Actual Hours of Facility Downtime": {
-    "pattern":re.compile('^[0-9]*$'),
-    "msg": 'must be an integer value greater than or equal to 0',
-  },
-  "Planned Hours of Facility Availability": {
-    "pattern":re.compile('^[0-9]*$'),
-    "msg": 'must be an integer value greater than or equal to 0',
-  },
-  "Rack Count": {
-    "pattern":re.compile('^[0-9]*$'),
-    "msg": 'must be an integer value greater than or equal to 0',
-  },
-  "Total Mainframes": {
-    "pattern":re.compile('^[0-9]*$'),
-    "msg": 'must be an integer value greater than or equal to 0',
-  },
-  "Total HPC Cluster Nodes": {
-    "pattern":re.compile('^[0-9]*$'),
-    "msg": 'must be an integer value greater than or equal to 0',
-  },
-  "Total Virtua Hosts": {
-    "pattern":re.compile('^[0-9]*$'),
-    "msg": 'must be an integer value greater than or equal to 0',
-  },
-  "Closing Fiscal Year": {
-    "pattern":re.compile('^[0-9]*$'),
-    "msg": 'must be an integer value greater than or equal to 0',
-  },
-  "Closing Quarter": ['Q1', 'Q2', 'Q3', 'Q4']
-}
-
 
 # Lowercase the field keys by updating the header row, for maximum compatiblity.
 def lower_headings(iterator):
     return itertools.chain([next(iterator).lower()], iterator)
 
-# Check required field with a list of valid values
-def check_required(name, msg=''):
-  check_values(name, msg)
+# must be an integer, e.g. "10", "-7"
+def is_integer(value):
+  try:
+    int(value)
+  except ValueError:
+    return "must be an integer value"
 
-  if special_required and name.lower() not in special_required:
-    return
+# must be a float, e.g. "10", "-7.6"
+def is_decimal(value):
+  try:
+    float(value)
+  except ValueError:
+    return "must be an float value"
 
-  result = ''
-  value = row.get(name.lower(), '')
+# must be greater than 0, e.g. "0.1", "5"
+def greater_0(value):
+  try:
+    assert float(value) > 0
+  except ValueError:
+    return "must be greater than 0"
+  except AssertionError:
+    return "must be greater than 0"
 
-  if value.lower() == '':
-    result = msg or '{} must not be blank.'.format(name)
+# must be equal or greater than 0, e.g. "0", "0.0", "10"
+def equal_greater_0(value):
+  try:
+    assert float(value) >= 0
+  except ValueError:
+    return "must be greater than or equal to 0"
+  except AssertionError:
+    return "must be greater than or equal to 0"
 
-  if result:
-    errors.append(result)
+# check field to against its valid_values/_functions
+def validate_values(data, field, msg=''):
+  errors = []
+  value = data.get(field.lower(), '')
 
-  return
+  # this function is not responsible to blank check
+  if not value:
+    return []
 
-# Check optional field with a list of valid values
-def check_values(name, msg=''):
-  result = ''
+  # check against a list of values first
+  if VALID_VALUES.get(field):
+    values = VALID_VALUES.get(field)
+    if value.lower() not in map(str.lower, values):
+      msg = msg or 'If not blank, {} value must be one of "{}"; "{}" is given.'.format(field, '", "'.join(values), value)
+      errors.append(msg)
+  # then check with a list of functions
+  elif VALID_FUNCTIONS.get(field):
+    funcs = VALID_FUNCTIONS.get(field)
+    errs = []
+    for func in funcs:
+      if not func:
+        continue
+      elif not isinstance(func, str):
+        print('Provide a function name in function list for field "{}". {} is given.'.format(field, type(func)))
+        exit()
 
-  validValues = valids.get(name, [])
-  if not validValues: # nothing to check afainst
-    return
+      try:
+        errs.append(eval(func)(value))
+      except NameError:
+        print('Function "{}" is not defined for field "{}".'.format(func, field))
+        exit()
 
-  value = row.get(name.lower(), '')
-  if value.lower() == '': # nothing to check
-    return
+    # remove empty ones
+    errs = [x for x in errs if x]
 
-  if isinstance(validValues, dict):
-    if not validValues['pattern'].match(value):
-      result = msg or (name + ' ' + validValues['msg'] + '. "' + value + '" is given.')
-  else: # validValues is a list of valid values
-    if value.lower() not in map(str.lower, validValues):
-      result = 'If not blank, {} value must be one of "{}"; "{}" is given.'.format(
-                name,
-                '", "'.join(validValues),
-                value)
+    if errs:
+      msg = msg or field + ' ' + ', '.join(errs) + '. "' + value + '" is given.'
+      errors.append(msg)
 
-  if result:
-    errors.append(result)
+  return errors
 
-  return
+# Check field for required
+def validate_required(data, field, specials, msg=''):
+  errors = []
+  # check required implies check valid values first
+  errors.extend(validate_values(data, field, msg))
 
+  if errors:
+    # if error from validate_values(), it means it HAS some value
+    # so we skip blank check.
+    pass
+  if specials and field not in specials:
+    pass
+  elif not data.get(field.lower()):
+    errors.append(msg or '{} must not be blank.'.format(field))
+
+  return errors
+
+# Main function starts
 with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
   reader = csv.DictReader(lower_headings(datafile))
   stats = {
@@ -140,166 +158,83 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     warnings = []
 
     ###
-    # Special condition for required fields.
+    # Special conditions for required fields.
     ###
-    special_required = []
+    specials = []
     if row.get('record validity', '').lower() == 'invalid facility':
-      special_required = ['agency abbreviation', 'component', 'data center id', 'record validity']
+      specials = ['agency abbreviation', 'component', 'data center id', 'record validity']
 
     elif row.get('ownership type', '').lower() != 'agency owned':
-      special_required = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage']
+      specials = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage']
 
     elif row.get('inter-agency shared services position', '').lower() == 'tenant':
-      special_required = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage', 'ownership type']
+      specials = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage', 'ownership type']
 
     elif row.get('key mission facility', '').lower() == 'yes':
-      special_required = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage', 'ownership type', 'key mission facility type']
+      specials = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage', 'ownership type', 'key mission facility type']
 
     ###
     # Data acceptance rules. These should match the IDC instructions.
     ###
 
-    check_required('Agency Abbreviation')
-    check_required('Component')
+    # Common required checks
+    #
+    for required_field in ['Agency Abbreviation', 'Component', 'Data Center Name', 'Record Validity',
+        'Ownership Type', 'Gross Floor Area', 'Data Center Tier', 'Key Mission Facility', 'Electricity Is Metered',
+        'Underutilized Servers', 'Actual Hours of Facility Downtime', 'Planned Hours of Facility Availability',
+        'Rack Count', 'Total Mainframes', 'Total HPC Cluster Nodes', 'Total Virtua Hosts', 'Closing Stage',
+    ]:
+      errors.extend(validate_required(row, required_field, specials))
 
-    if row.get('data center id'):
-      if not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
+    # Common optional value checks
+    #
+    errors.extend(validate_values(row, 'Country'))
+
+    # Other checks
+    #
+    if row.get('data center id') and not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
         errors.append('Data Center ID must be DCOI-DC-#####. Or leave blank for new data centers.')
 
-    check_required('Record Validity')
-
-    if row.get('record validity', '').lower() == 'invalid facility':
-      if row.get('closing stage').lower() == 'closed':
+    if row.get('record validity', '').lower() == 'invalid facility' and row.get('closing stage').lower() == 'closed':
         errors.append('Record Validity cannot be "Invalid Facility" if Closing Stage is "Closed".')
 
-    check_required('Ownership Type')
-
-    if row.get('ownership type', '').lower() == 'Using Cloud Provider'.lower():
-      if row.get('data center tier', '').lower() != 'Using Cloud Provider'.lower():
+    if row.get('ownership type', '').lower() == 'Using Cloud Provider'.lower() and row.get('data center tier', '').lower() != 'Using Cloud Provider'.lower():
         errors.append('Data Center Tier must be "Using Cloud Provider" if Ownership Type is "Using Cloud Provider".')
 
     if row.get('ownership type', '').lower() == 'Colocation'.lower():
       msg = 'Inter-Agency Shared Services Position must not be blank if Ownership Type is "Colocation".'
-      check_required('Inter-Agency Shared Services Position', msg=msg)
-
-    check_values('Inter-Agency Shared Services Position')
-    check_values('Country')
-    check_required('Gross Floor Area')
-    check_required('Data Center Tier')
-    check_required('Key Mission Facility')
+      errors.extend(validate_required(row, 'Inter-Agency Shared Services Position', specials, msg))
+    else:
+      errors.extend(validate_values(row, 'Inter-Agency Shared Services Position'))
 
     if row.get('key mission facility', '').lower() == 'yes':
       msg = 'Key Mission Facilities must have a Key Mission Facility Type.'
-      check_required('Key Mission Facility Type', msg=msg)
-
+      errors.extend(validate_required(row, 'Key Mission Facility Type', specials, msg))
     else:
-      check_values('Key Mission Facility Type')
-
-    check_required('Electricity Is Metered')
+      errors.extend(validate_values(row, 'Key Mission Facility Type'))
 
     if row.get('electricity is metered', '').lower() == 'yes':
-      msg = 'Avg Electricity Usage must not be blank if Electricity is Metered'
-      check_required('Avg Electricity Usage', msg=msg)
-      msg = 'Avg IT Electricity Usage must not be blank if Electricity is Metered'
-      check_required('Avg IT Electricity Usage', msg=msg)
-
+      msg = 'Avg Electricity Usage must not be blank if Electricity is Metered.'
+      errors.extend(validate_required(row, 'Avg Electricity Usage', specials, msg))
+      msg = 'Avg IT Electricity Usage must not be blank if Electricity is Metered.'
+      errors.extend(validate_required(row, 'Avg IT Electricity Usage', specials, msg))
     else:
-      check_values('Avg Electricity Usage')
-      check_values('Avg IT Electricity Usage')
+      errors.extend(validate_values(row, 'Avg Electricity Usage'))
+      errors.extend(validate_values(row, 'Avg IT Electricity Usage'))
 
+    # test the string is decimal then compare the value
     if row.get('avg electricity usage', '').replace('.','',1).isdigit() and row.get('avg it electricity usage', '').replace('.','',1).isdigit():
       if float(row.get('avg electricity usage')) < float(row.get('avg it electricity usage')):
         errors.append('Avg IT Electricity Usage must be less than or equal to Avg Electricity Usage.')
 
-    check_required('Underutilized Servers')
-    check_required('Actual Hours of Facility Downtime')
-    check_required('Planned Hours of Facility Availability')
-    check_required('Rack Count')
-    check_required('Total Mainframes')
-    check_required('Total HPC Cluster Nodes')
-    check_required('Total Virtua Hosts')
-    check_required('Closing Stage')
-
     if row.get('closing stage', '').lower() != 'not closing':
-      msg = 'Closing Fiscal Year must not be blank if Closing Stage is not "Not Closing"'
-      check_required('Closing Fiscal Year', msg)
-      msg = 'Closing Quarter must not be blank if Closing Stage is not "Not Closing"'
-      check_required('Closing Quarter', msg=msg)
+      msg = 'Closing Fiscal Year must not be blank if Closing Stage is not "Not Closing".'
+      errors.extend(validate_required(row, 'Closing Fiscal Year', specials, msg))
+      msg = 'Closing Quarter must not be blank if Closing Stage is not "Not Closing".'
+      errors.extend(validate_required(row, 'Closing Quarter', specials, msg))
     else:
-      check_values('Closing Fiscal Year')
-      check_values('Closing Quarter')
-
-
-    # The data centers that are still targets for optimization - Valid, Agency-Owned, Open, non-Tenant.
-    if (row.get('record validity', '').lower() == 'valid facility' and
-        row.get('ownership type', '').lower() == 'agency owned' and
-        row.get('closing stage', '').lower() != 'closed' and
-        row.get('inter-agency shared services position', '').lower() != 'tenant'):
-
-      if not row.get('closing stage'):
-        errors.append('Closing Stage must not be blank.')
-      else:
-        try:
-          assert row.get('closing stage', '').lower() in map(str.lower, valids['Closing Stage'])
-
-          if row.get('closing stage', '').lower() != 'not closing':
-            if not row.get('closing fiscal year'):
-              errors.append('Closing Fiscal Year must not be blank if Closing Stage is not "Not Closing"')
-
-            if not row.get('closing quarter'):
-              errors.append('Closing Quarter must not be blank if Closing Stage is not "Not Closing"')
-
-        except AssertionError:
-          errors.append('Closing Stage value must be one of "' + '", "'.join(valids['Closing Stage']) + '".')
-
-
-      if row.get('key mission facility', '').lower() == 'yes':
-        if not row.get('key mission facility type'):
-          errors.append('Key Mission Facility Type must not be blank for all Key Mission Facilities')
-
-      else:
-        if not row.get('data center name'):
-          errors.append('Data Center Name must not be blank.')
-
-        if not row.get('gross floor area'):
-          errors.append('Gross Floor Area must not be blank.')
-
-        if not row.get('data center tier'):
-          errors.append('Data Center Tier must not be blank.')
-
-        # The following numeric fields may reasonably be "0", so we must check for blanks instead of "not".
-        if row.get('underutilized servers') == '':
-          errors.append('Underutilized Servers must not be blank.')
-
-        if row.get('actual hours of facility downtime') == '':
-          errors.append('Actual Hours of Facility Downtime must not be blank')
-
-        if row.get('planned hours of facility availability') == '':
-          errors.append('Planned Hours of Facility Availability must not be blank')
-
-        if row.get('rack count') == '':
-          errors.append('Rack Count must not be blank')
-
-        if row.get('total mainframes') == '':
-          errors.append('Total Mainframes must not be blank')
-
-        if row.get('total hpc cluster nodes') == '':
-          errors.append('Total HPC Cluster Nodes must not be blank')
-
-        if row.get('total servers') == '':
-          errors.append('Total Servers must not be blank')
-
-        if row.get('total virtual hosts') == '':
-          errors.append('Total Virtual Hosts must not be blank')
-
-    if row.get('key mission facility type', '').lower() == 'legal':
-      msg = 'Key Mission Facilities of Type "legal" must include the statute or regulation in the Comments field.'
-      check_required('Comments', msg)
-
-    elif row.get('key mission facility type', '').lower() == 'other':
-      msg = 'Key Mission Facilities of Type "other" must have an explanation in the Comments field.'
-      check_required('Comments', msg)
-
+      errors.extend(validate_values(row, 'Closing Fiscal Year'))
+      errors.extend(validate_values(row, 'Closing Quarter'))
 
     ###
     # Data validation rules. This should catch any bad data.
@@ -308,7 +243,7 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     if (row.get('record validity', '').lower() == 'valid facility' and
         row.get('closing stage', '').lower() != 'closed' and
         row.get('ownership type', '').lower() == 'agency owned' and
-        row.get('data center tier', '').lower() not in map(str.lower, valids['Data Center Tier'])):
+        row.get('data center tier', '').lower() not in map(str.lower, VALID_VALUES['Data Center Tier'])):
       warnings.append('Only tiered data centers need to be reported, marked as "{}"'.format(row.get('data center tier')))
         
     
@@ -329,7 +264,7 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
       warnings.append('Key Mission Facility Type should only be present if Key Mission Facility is "Yes"')
     
     if row.get('key mission facility', '').lower() == 'yes':
-      if row.get('data center tier', '').lower() not in map(str.lower, valids['Data Center Tier']):
+      if row.get('data center tier', '').lower() not in map(str.lower, VALID_VALUES['Data Center Tier']):
         warnings.append('Key Mission Facilities should not be non-tiered data centers.')
         
       if row.get('ownership type', '').lower() != 'agency owned':
@@ -388,8 +323,12 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     print('*', end=" ")
     if hasErrors:
       print('%d errors found in %d records.' % (stats['error'], stats['record_error']), end=" ")
+
     if hasWarnings:
       print('%d warnings found in %d records.' % (stats['warning'], stats['record_warning']))
+    else:
+      print('')
+
     print('*')
 
   if hasErrors:
