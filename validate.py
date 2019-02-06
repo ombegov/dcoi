@@ -258,8 +258,14 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
           .format(row.get('avg electricity usage'), row.get('avg it electricity usage'))
       )
 
+    # If Electricity is Metered = "No" then Electricity Usage should be blank
+    if row.get('electricity is metered', '').lower() == 'no':
+      if row.get('avg electricity usage'):
+        warnings.append('Avg Electricity Usage should be blank if Electricity is not Metered.')
+      if row.get('avg it electricity usage'):
+        warnings.append('Avg IT Electricity Usage should be blank if Electricity is not Metered.')
 
-    # Check for incorrect KMF reporting      
+    # Check for incorrect KMF reporting
     if row.get('key mission facility type') and row.get('key mission facility', '').lower() != 'yes':
       warnings.append('Key Mission Facility Type should only be present if Key Mission Facility is "Yes"')
     
@@ -273,6 +279,9 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
       if row.get('record validity', '').lower() != 'valid facility':
         warnings.append('Invalid facilities should not be Key Mission Facilities.')
         
+      if row.get('closing stage', '').lower() != 'closed':
+        warnings.append('Key Mission Facilities cannot be "Yes" if Closing Stage is "Closed".')
+
     ###
     # Print our results.
     ###
