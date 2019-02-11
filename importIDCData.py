@@ -26,20 +26,18 @@ def main():
   args = parser.parse_args()
 
   conn = sqlite3.connect(config.DB_CONFIG['file'])
-  c = conn.cursor()
 
   # For a single file.
   if os.path.isfile(args.filename):
-    import_file(args.filename, args.quarter, c)
+    import_file(args.filename, args.quarter, conn)
 
   # For a director of files.
   elif(os.path.isdir(args.filename)):
     for f in os.listdir(args.filename):
       theFile = os.path.join(args.filename, f)
       if os.path.isfile(theFile):
-        import_file(theFile, args.quarter, c)
+        import_file(theFile, args.quarter, conn)
 
-  conn.commit()
   conn.close()
 
 
@@ -47,8 +45,8 @@ def main():
 def lower_headings(iterator):
     return itertools.chain([next(iterator).lower()], iterator)
 
+# Checks if a path is an actual directory
 def is_path(filename):
-    """Checks if a path is an actual directory"""
     if os.path.isfile(filename):
       return filename
     elif os.path.isdir(filename):
@@ -186,6 +184,8 @@ def import_file(filename, q, conn):
           :comments
         )
       ''', insertData)
+
+      conn.commit()
 
 if __name__ == '__main__':
   main()
