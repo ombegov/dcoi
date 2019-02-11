@@ -26,6 +26,7 @@ c.execute('''
     grossFloorArea INTEGER,
     keyMissionFacility INTEGER,
     keyMissionFacilityType TEXT,
+    optimizationExempt INTEGER,
     electricityMetered INTEGER,
     avgElectricityUsage REAL,
     avgITElectricityUsage REAL,

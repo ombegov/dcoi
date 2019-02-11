@@ -64,49 +64,68 @@ def is_quarter(quarter):
     msg = "{0} is not a valid quarter. Must match 2018q3 or similar".format(quarter)
     raise argparse.ArgumentTypeError(msg)
 
-def import_file(filename, q, c):
-  print('# ', filename)
+def import_file(filename, q, conn):
+  c = conn.cursor()
+
+  print('Importing ', filename)
 
   year, quarter = q.split('q')
   quarter = int(quarter)
   year = int(year)
 
+  agencies = []
+
   with open(filename, 'r', encoding='utf-8-sig') as datafile:
     reader = csv.DictReader(lower_headings(datafile))
     for row in reader:
-
       # We only want valid records.
-      if row['record validity'] != 'Valid Facility':
+      if row.get('record validity') != 'Valid Facility':
         continue
 
-      print(row['data center id'], year, quarter)
+      # Overwrite any previous data for this agency for the specified quarter.
+      if row.get('agency abbreviation') not in agencies:
+        agencies.append(row.get('agency abbreviation'))
+
+        print('Clearing {} {} q{}'.format(row.get('agency abbreviation'), year, quarter))
+
+        c.execute('DELETE FROM datacenters WHERE year=:year AND quarter=:quarter AND agency=:agency',
+          {
+            'year': year,
+            'quarter': quarter,
+            'agency': row.get('agency abbreviation')
+          }
+        )
+        conn.commit()
+
+      print(row.get('data center id'), year, quarter)
 
       insertData = {
-        'id' : row['data center id'],
+        'id' : row.get('data center id'),
         'quarter' : quarter,
         'year': year,
-        'agency' : row['agency abbreviation'],
-        'component' : row['component'],
-        'ownershipType' : row['ownership type'],
+        'agency' : row.get('agency abbreviation'),
+        'component' : row.get('component'),
+        'ownershipType' : row.get('ownership type'),
         'sharedServicesPosition' : row['inter-agency shared services position'],
-        'tier' : row['data center tier'],
-        'country' : row['country'],
-        'grossFloorArea' : row['gross floor area'],
-        'keyMissionFacility' : row['key mission facility'],
-        'keyMissionFacilityType' : row['key mission facility type'],
-        'electricityMetered' : row['electricity is metered'],
-        'avgElectricityUsage' : row['avg electricity usage'],
-        'avgITElectricityUsage' : row['avg it electricity usage'],
-        'underutilizedServers' : row['underutilized servers'],
-        'downtimeHours' : row['actual hours of facility downtime'],
-        'plannedAvailabilityHours' : row['planned hours of facility availability'],
-        'mainframesCount' : row['total mainframes'],
-        'HPCCount' : row['total hpc cluster nodes'],
-        'serverCount' : row['total servers'],
-        'virtualHostCount' : row['total virtual hosts'],
-        'closingStage' : row['closing stage'],
-        'closingTargetDate' : row['closing fiscal year'] + ' ' + row['closing quarter'],
-        'comments' : row['comments']
+        'tier' : row.get('data center tier'),
+        'country' : row.get('country'),
+        'grossFloorArea' : row.get('gross floor area'),
+        'keyMissionFacility' : int(row.get('key mission facility').lower() == 'yes'),
+        'keyMissionFacilityType' : row.get('key mission facility type'),
+        'optimizationExempt': int(row.get('optimization exempt') == 'yes'),
+        'electricityMetered' : int(row.get('electricity is metered') == 'yes'),
+        'avgElectricityUsage' : row.get('avg electricity usage'),
+        'avgITElectricityUsage' : row.get('avg it electricity usage'),
+        'underutilizedServers' : row.get('underutilized servers'),
+        'downtimeHours' : row.get('actual hours of facility downtime'),
+        'plannedAvailabilityHours' : row.get('planned hours of facility availability'),
+        'mainframesCount' : row.get('total mainframes'),
+        'HPCCount' : row.get('total hpc cluster nodes'),
+        'serverCount' : row.get('total servers'),
+        'virtualHostCount' : row.get('total virtual hosts'),
+        'closingStage' : row.get('closing stage'),
+        'closingTargetDate' : row.get('closing fiscal year') + ' ' + row.get('closing quarter'),
+        'comments' : row.get('comments')
       }
 
       c.execute('''
@@ -124,6 +143,7 @@ def import_file(filename, q, c):
           grossFloorArea,
           keyMissionFacility,
           keyMissionFacilityType,
+          optimizationExempt,
           electricityMetered,
           avgElectricityUsage,
           avgITElectricityUsage,
@@ -150,6 +170,7 @@ def import_file(filename, q, c):
           :grossFloorArea,
           :keyMissionFacility,
           :keyMissionFacilityType,
+          :optimizationExempt,
           :electricityMetered,
           :avgElectricityUsage,
           :avgITElectricityUsage,
