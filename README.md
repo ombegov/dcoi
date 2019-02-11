@@ -57,3 +57,12 @@ Usage: `python stratPlanDownload.py`
 This script generates the JSON data files needed for the IT Dashboard.
 
 Usage: `python runDCOIReport.py`
+
+
+## example-site/
+
+This directory contains demo data and example visualizations of our imported
+data.
+
+Using python, you can serve a local version with `python -m http.server 8000`
+(Python 3) or `python -m SimpleHTTPServer 8000` (Python 2).

@@ -62,6 +62,8 @@ def jsonCleanup(json):
   return re.sub(r'"FLOAT:([0-9\.]+)"', r'\1', json)
 
 # Setup our base data holders.
+data = {}
+
 metrics = [
   'count',
   'virtualization',
@@ -74,27 +76,9 @@ metrics = [
   'underutilizedServers'
 ]
 
-baseData = {
-  'datacenters': {
-    'open': {},
-    'kmf': {},
-    'closed': {}
-  },
-  'savings': {},
-  'metrics': {}
-}
-
-data = {
-  'All Agencies': copy.deepcopy(baseData)
-}
-
-for metric in metrics:
-  baseData['metrics'][metric] = {}
-
 allAgencies = 'All Agencies'
 
 tiers = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4']
-
 
 conn = sqlite3.connect(config.DB_CONFIG['file'])
 conn.row_factory = sqlite3.Row
@@ -102,7 +86,7 @@ conn.row_factory = sqlite3.Row
 c = conn.cursor()
 
 
-# 1. First, get our overall counts.
+# First, get our overall counts.
 
 c.execute('''
 SELECT
@@ -118,10 +102,13 @@ WHERE ownershipType = 'Agency Owned'
 GROUP BY agency, year, quarter, tier, keyMissionFacility, closingStage
 ''')
 
+maxQuarter = (0,0);
+
 for row in c.fetchall():
-  # Initialize our data.
-  if row['agency'] not in data:
-    data[row['agency']] = copy.deepcopy(baseData)
+  if(row['year'] > maxQuarter[0] or
+    (row['year'] == maxQuarter[0] and row['quarter'] > maxQuarter[1])
+  ):
+    maxQuarter = (row['year'], row['quarter'])
 
   # Setup our quarter string.
   quarter = getQuarter(row)
@@ -131,32 +118,57 @@ for row in c.fetchall():
   if row['closingStage'] != 'Closed':
     closingStage = 'open'
 
+  if row['keyMissionFacility'] == 1 and closingStage == 'open':
+    closingStage = 'kmf'
+
   tier = row['tier']
   if tier not in tiers:
     tier = 'nontiered'
 
   # Agency
-  deepadd(data, row['agency'], 'datacenters', closingStage, quarter, 'total', row['count'])
   deepadd(data, row['agency'], 'datacenters', closingStage, quarter, tier, row['count'])
-
-  # Total
-  deepadd(data, allAgencies, 'datacenters', closingStage, quarter, 'total', row['count'])
+  # All Agencies Sum
   deepadd(data, allAgencies, 'datacenters', closingStage, quarter, tier, row['count'])
 
-  ## KMFs
-
-  # handle Key Mission Facilities; we only care about open ones.
-  if row['keyMissionFacility'] == 'Yes' and closingStage == 'open':
-    # Agency
-    deepadd(data, row['agency'], 'datacenters', 'kmf', quarter, 'total', row['count'])
-    deepadd(data, row['agency'], 'datacenters', 'kmf', quarter, tier, row['count'])
-
-    # Total
-    deepadd(data, allAgencies, 'datacenters', 'kmf', quarter, 'total', row['count'])
-    deepadd(data, allAgencies, 'datacenters', 'kmf', quarter, tier, row['count'])
+  # We only add to the total if this is a tiered facility, based on our new guidance.
+  if row['tier'] in tiers:
+    deepadd(data, row['agency'], 'datacenters', closingStage, quarter, 'total', row['count'])
+    deepadd(data, allAgencies, 'datacenters', closingStage, quarter, 'total', row['count'])
 
 
-# 2. Next, calculate our metrics for open data centers.
+# Analysis of our Key Mission Facilities.  We only do the current quarter.
+c.execute('''
+SELECT
+agency,
+year,
+quarter,
+keyMissionFacilityType,
+optimizationExempt,
+COUNT(*) AS count
+FROM datacenters
+WHERE year = :year
+AND quarter = :quarter
+AND keyMissionFacility = 1
+AND ownershipType = 'Agency Owned'
+AND closingStage != 'Closed'
+AND tier IN('Tier 1', 'Tier 2', 'Tier 3', 'Tier 4')
+GROUP BY agency, keyMissionFacilityType, optimizationExempt
+ORDER BY agency, keyMissionFacilityType, optimizationExempt
+''', {'year': maxQuarter[0], 'quarter': maxQuarter[1]})
+
+for row in c.fetchall():
+  # Setup our quarter string.
+  quarter = getQuarter(row)
+
+  deepadd(data, row['agency'], 'kmf', quarter, row['keyMissionFacilityType'], 'total', row['count'])
+  deepadd(data, allAgencies, 'kmf', quarter, row['keyMissionFacilityType'], 'total', row['count'])
+
+  if row['optimizationExempt'] == 1:
+    deepadd(data, row['agency'], 'kmf', quarter, row['keyMissionFacilityType'], 'optimizationExempt', row['count'])
+    deepadd(data, allAgencies, 'kmf', quarter, row['keyMissionFacilityType'], 'optimizationExempt', row['count'])
+
+
+# Next, calculate our metrics for open data centers.
 
 c.execute('''
 SELECT
@@ -197,7 +209,7 @@ for row in c.fetchall():
     deepadd(data, allAgencies, 'metrics', metric, quarter, 'total', row[metric])
 
 
-# 3. Calculate our cost savings
+# Calculate our cost savings
 
 c.execute('''
 SELECT *
