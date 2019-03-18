@@ -143,7 +143,7 @@ def validate_required(data, field, specials, msg=''):
   return errors
 
 # Main function starts
-with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
+with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
   reader = csv.DictReader(lower_headings(datafile))
   stats = {
     'record_total': 0,
