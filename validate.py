@@ -177,14 +177,15 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     # Data acceptance rules. These should match the IDC instructions.
     ###
 
-    # Common required checks
+    # Common required checks for open, valid facilities.
     #
-    for required_field in ['Agency Abbreviation', 'Component', 'Data Center Name', 'Record Validity',
-        'Ownership Type', 'Gross Floor Area', 'Data Center Tier', 'Key Mission Facility', 'Electricity Is Metered',
-        'Underutilized Servers', 'Actual Hours of Facility Downtime', 'Planned Hours of Facility Availability',
-        'Rack Count', 'Total Mainframes', 'Total HPC Cluster Nodes', 'Total Virtual Hosts', 'Closing Stage',
-    ]:
-      errors.extend(validate_required(row, required_field, specials))
+    if row.get('closing stage').lower() != 'closed' and row.get('record validity').lower != 'invalid facility':
+      for required_field in ['Agency Abbreviation', 'Component', 'Record Validity', #'Data Center Name',
+          'Ownership Type', 'Gross Floor Area', 'Data Center Tier', 'Key Mission Facility', 'Electricity Is Metered',
+          'Underutilized Servers', 'Actual Hours of Facility Downtime', 'Planned Hours of Facility Availability',
+          'Rack Count', 'Total Mainframes', 'Total HPC Cluster Nodes', 'Total Virtual Hosts', 'Closing Stage',
+      ]:
+        errors.extend(validate_required(row, required_field, specials))
 
     # Common optional value checks
     #
@@ -194,9 +195,6 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     #
     if row.get('data center id') and not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
         errors.append('Data Center ID must be DCOI-DC-#####. Or leave blank for new data centers.')
-
-    if row.get('record validity', '').lower() == 'invalid facility' and row.get('closing stage').lower() == 'closed':
-        errors.append('Record Validity cannot be "Invalid Facility" if Closing Stage is "Closed".')
 
     if row.get('ownership type', '').lower() == 'Using Cloud Provider'.lower() and row.get('data center tier', '').lower() != 'Using Cloud Provider'.lower():
         errors.append('Data Center Tier must be "Using Cloud Provider" if Ownership Type is "Using Cloud Provider".')
@@ -218,14 +216,11 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
       errors.extend(validate_required(row, 'Avg Electricity Usage', specials, msg))
       msg = 'Avg IT Electricity Usage must not be blank if Electricity is Metered.'
       errors.extend(validate_required(row, 'Avg IT Electricity Usage', specials, msg))
-    else:
-      errors.extend(validate_values(row, 'Avg Electricity Usage'))
-      errors.extend(validate_values(row, 'Avg IT Electricity Usage'))
 
     # test the string is decimal then compare the value
     if row.get('avg electricity usage', '').replace('.','',1).isdigit() and row.get('avg it electricity usage', '').replace('.','',1).isdigit():
       if float(row.get('avg electricity usage')) < float(row.get('avg it electricity usage')):
-        errors.append('Avg IT Electricity Usage must be less than or equal to Avg Electricity Usage.')
+        errors.append('Avg IT Electricity Usage must be less than Avg Electricity Usage.')
 
     if row.get('closing stage', '').lower() != 'not closing':
       msg = 'Closing Fiscal Year must not be blank if Closing Stage is not "Not Closing".'
@@ -252,18 +247,13 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
     # PUE = 1.0:
     if (row.get('avg electricity usage') and
         row.get('avg it electricity usage') and
+        row.get('avg electricity usage').replace('.','',1).isdigit() and
+        row.get('avg it electricity usage').replace('.','',1).isdigit() and
         row.get('avg electricity usage') == row.get('avg it electricity usage')):
       warnings.append(
         'Avg Electricity Usage ({}) for a facility should never be equal to Avg IT Electricity Usage ({})'
           .format(row.get('avg electricity usage'), row.get('avg it electricity usage'))
       )
-
-    # If Electricity is Metered = "No" then Electricity Usage should be blank
-    if row.get('electricity is metered', '').lower() == 'no':
-      if row.get('avg electricity usage'):
-        warnings.append('Avg Electricity Usage should be blank if Electricity is not Metered.')
-      if row.get('avg it electricity usage'):
-        warnings.append('Avg IT Electricity Usage should be blank if Electricity is not Metered.')
 
     # Check for incorrect KMF reporting
     if row.get('key mission facility type') and row.get('key mission facility', '').lower() != 'yes':
@@ -279,8 +269,8 @@ with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
       if row.get('record validity', '').lower() != 'valid facility':
         warnings.append('Invalid facilities should not be Key Mission Facilities.')
         
-      if row.get('closing stage', '').lower() != 'closed':
-        warnings.append('Key Mission Facilities cannot be "Yes" if Closing Stage is "Closed".')
+      if row.get('closing stage', '').lower() == 'closed':
+        warnings.append('Key Mission Facilities should not be "Yes" if Closing Stage is "Closed".')
 
     ###
     # Print our results.
