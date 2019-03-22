@@ -289,7 +289,7 @@ function parseDone() {
   }
   else {
     msgs.push(
-      showMsg('<strong class="success">No critical errors were found. You may submit your inventory data.<strong>')
+      buildMsg('<strong class="success">No critical errors were found. You may submit your inventory data.<strong>')
     );
     msgs.push(buildMsg(''));
   }
