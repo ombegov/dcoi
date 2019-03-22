@@ -12,6 +12,7 @@ function handleSubmit(e) {
 var headers = [];
 var errorCount = 0;
 var warningCount = 0;
+var recordCount = 0;
 
 var validValues = {
   "record validity": ['invalid facility', 'valid facility'],
@@ -46,16 +47,31 @@ var requiredFields = {
   kmf: ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage', 'ownership type', 'key mission facility type']
 };
 
-function showMsg(msg, indent) {
+function buildMsg(msg, indent) {
   let elm = $('<div class="message">'+msg+'</div>');
   if(indent) {
     elm.addClass('indent-'+indent);
   }
-  $('#results').append(elm);
+  return elm;
 }
 
-function showDivider() {
-  $('#results').append('<hr class="row-divider"/>');
+function showBlock(elms, classes) {
+  let container = $('<div class="record"></div>');
+  if(classes) {
+    for(let i = 0; i < classes.length; i++) {
+      container.addClass(classes[i]);
+    }
+  }
+
+  for(let i = 0; i < elms.length; i++) {
+    console.log(elms[i]);
+    container.append(elms[i]);
+  }
+  $('#results').append(container);
+}
+
+function buildDivider() {
+  return $('<hr class="row-divider"/>');
 }
 
 function clearMsg() {
@@ -88,6 +104,7 @@ function processRow(row) {
     }
   }
 
+  recordCount++;
   let results = checkErrors(parsed);
   if(results.errors.length || results.warnings.length) {
     showErrors(parsed, results.errors, results.warnings);
@@ -230,43 +247,65 @@ function checkErrors(data) {
 }
 
 function showErrors(data, errors, warnings) {
-  showMsg(data['data center id'] + ' | ' + data['component'] + ' | ' + data['data center name']);
-  showCategory('Errors', errors);
-  showCategory('Warnings', warnings);
-  showDivider();
+  let msgs = [];
+  let classes = [];
+  msgs.push(
+    buildMsg(data['data center id'] + ' | ' + data['component'] + ' | ' + data['data center name'])
+  );
+  if(errors.length) {
+    classes.push('has-errors');
+    msgs = msgs.concat(showCategory('Errors', errors));
+  }
+  if(warnings.length) {
+    classes.push('has-warnings');
+    msgs = msgs.concat(showCategory('Warnings', warnings));
+  }
+  msgs.push(buildDivider());
+  showBlock(msgs, classes);
 }
 
 function showCategory(label, errors) {
+  let msgs = [];
   if(errors.length) {
-    showMsg(label+':', 1);
+    msgs.push(buildMsg(label+':', 1));
     for(let i = 0; i < errors.length; i++) {
-      showMsg(errors[i], 2);
+      msgs.push(buildMsg(errors[i], 2));
     }
   }
+  return msgs;
 }
 
 function parseDone() {
-  showMsg('Inventory validation complete.');
-  showMsg('');
+  msgs = [
+    buildMsg('Inventory validation complete.'),
+    buildMsg(recordCount + ' records processed.'),
+    buildMsg('')
+  ]
   if(errorCount > 0) {
-    showMsg('<strong class="error">' + errorCount + ' errors were found.  You must resolved these errors before submitting your inventory data!</strong>');
-    showMsg('');
+    msgs.push(
+      buildMsg('<strong class="error">' + errorCount + ' errors were found.  You must resolved these errors before submitting your inventory data!</strong>')
+    )
+    msgs.push(buildMsg(''));
   }
   else {
-    showMsg('<strong class="success">No critical errors were found. You may submit your inventory data.<strong>');
-    showMsg('');
+    msgs.push(
+      showMsg('<strong class="success">No critical errors were found. You may submit your inventory data.<strong>')
+    );
+    msgs.push(buildMsg(''));
   }
   if(warningCount > 0) {
-    showMsg(warningCount + ' warnings were found.  You do not have to resolve these warning before submitting your inventory data, but it is strongly suggested that you investigate them.');
+    msgs.push(
+      buildMsg(warningCount + ' warnings were found.  You do not have to resolve these warning before submitting your inventory data, but it is strongly suggested that you investigate them.')
+    );
   }
-
-
+  showBlock(msgs);
 }
 
 function parse() {
   headers = [];
   errorCount = 0;
   warningCount = 0;
+  recordCount = 0;
 
   let papaConfig = {
     step: processRow,
@@ -275,7 +314,12 @@ function parse() {
   $('#input-file').parse({config: papaConfig});
 }
 
+function handleWarningDisplay() {
+  $('#results').toggleClass('hide-warnings', !$('#toggle-warnings').prop('checked'));
+}
+
 $( document ).ready(function (){
   $('#submit').click(handleSubmit);
   $('#validate-form').submit(handleSubmit);
+  $('#toggle-warnings').click(handleWarningDisplay);
 });
