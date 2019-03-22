@@ -64,7 +64,6 @@ function showBlock(elms, classes) {
   }
 
   for(let i = 0; i < elms.length; i++) {
-    console.log(elms[i]);
     container.append(elms[i]);
   }
   $('#results').append(container);
