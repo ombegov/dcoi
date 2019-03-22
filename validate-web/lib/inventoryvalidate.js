@@ -41,10 +41,10 @@ var requiredFields = {
     'ownership type', 'gross floor area', 'data center tier', 'rack count', 'total mainframes',
     'total hpc cluster nodes', 'total virtual hosts', 'closing stage'
   ],
-  invalid: ['agency abbreviation', 'component', 'data center id', 'record validity'],
-  otherOwner: ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage'],
-  tenant: ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage', 'ownership type'],
-  kmf: ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage', 'ownership type', 'key mission facility type']
+  invalid: ['agency abbreviation', 'component', 'record validity'],
+  otherOwner: ['agency abbreviation', 'component', 'record validity', 'closing stage'],
+  tenant: ['agency abbreviation', 'component', 'record validity', 'closing stage', 'ownership type'],
+  kmf: ['agency abbreviation', 'component', 'record validity', 'closing stage', 'ownership type', 'key mission facility type']
 };
 
 function buildMsg(msg, indent) {
