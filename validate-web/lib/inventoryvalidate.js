@@ -13,6 +13,12 @@ var headers = [];
 var errorCount = 0;
 var warningCount = 0;
 var recordCount = 0;
+var hasValidFacilities = false;
+var allRecordWarnings = {
+  'underutilized servers': 'No facilities were listed having underutilized servers. Please verify this information.',
+  'facility downtime': 'No facilities were listed with any downtime. Please verify this information.',
+  'key mission facilities': 'No key mission facilities were listed. Please verify this information.'
+}
 
 var validValues = {
   "record validity": ['invalid facility', 'valid facility'],
@@ -47,10 +53,10 @@ var requiredFields = {
   kmf: ['agency abbreviation', 'component', 'record validity', 'closing stage', 'ownership type', 'key mission facility type']
 };
 
-function buildMsg(msg, indent) {
+function buildMsg(msg, classes) {
   let elm = $('<div class="message">'+msg+'</div>');
-  if(indent) {
-    elm.addClass('indent-'+indent);
+  if(classes) {
+    elm.addClass(classes);
   }
   return elm;
 }
@@ -58,9 +64,7 @@ function buildMsg(msg, indent) {
 function showBlock(elms, classes) {
   let container = $('<div class="record"></div>');
   if(classes) {
-    for(let i = 0; i < classes.length; i++) {
-      container.addClass(classes[i]);
-    }
+    container.addClass(classes);
   }
 
   for(let i = 0; i < elms.length; i++) {
@@ -118,6 +122,8 @@ function checkErrors(data) {
    * Error checking.
    */
 
+  let applicable = false;
+
   // Check that required fields are filled out.
   let required = requiredFields['valid'];
   // Override the default required fields for special categories.
@@ -137,10 +143,17 @@ function checkErrors(data) {
   // Key mission facilities have reduced requirements.
   else if(data['key mission facility'].toLowerCase() == 'yes') {
     required = requiredFields['kmf'];
+    applicable = true;
+    hasValidFacilities = true;
   }
   // Closed facilities may be older records and thus missing recent metrics.
   else if(data['closing stage'].toLowerCase() == 'closed') {
-      required = requiredFields['closed'];
+    required = requiredFields['closed'];
+  }
+  // Otherwise, this is a real, applicable data center that needs further checks.
+  else {
+    applicable = true;
+    hasValidFacilities = true;
   }
 
   for(let i = 0; i < required.length; i++) {
@@ -152,7 +165,7 @@ function checkErrors(data) {
   /*
    * If the record is not valid, this is assumed to be bad data and we don't do any further error checks.
    */
-  if(isValid(data['record validity']) && data['record validity'].toLowerCase() == 'invalid facility') {
+  if(!applicable) {
     errorCount += errors.length;
     warningCount += warnings.length;
 
@@ -197,7 +210,11 @@ function checkErrors(data) {
     if(!isValid(data['closing quarter']) || !isValid(data['closing fiscal year'])) {
        errors.push('If a facility has a closing stage of "Closed" or "Migration Execution", both Closing Year and Closing Quarter must be filled in.');
     }
+  }
 
+  // Availability
+  if(isValid(data['planned hours of facility availability']) && data['planned hours of facility availability'] == 0) {
+    errors.push('Planned Hours of Facility Availability must be greater than 0.');
   }
 
   /*
@@ -236,6 +253,38 @@ function checkErrors(data) {
     }
   }
 
+  // Availability
+  // We can't set this too high, since some agencies run their data centers only during business hours, and not all are
+  // designed for 99% uptime.
+  let minimumHours = (8 * 5 * 4 * 3) * 0.9; // 8 hours in a day * 5 days a week * 4 weeks a month * 3 months * 90% uptime
+  if(
+    isValid(data['planned hours of facility availability']) &&
+    data['planned hours of facility availability'] > 0 &&
+    data['planned hours of facility availability'] < minimumHours
+   ) {
+    warnings.push('Planned Hours of Facility Availability for a quarter should usually be at least ' + minimumHours + '.');
+  }
+
+  /*
+   * Flags for all-records. Checks to see if agencies are generally following our guidance.
+   */
+  if(applicable) {
+    // Downtime
+    if(isValid(data['actual hours of facility downtime']) && data['actual hours of facility downtime'] > 0) {
+      delete allRecordWarnings['facility downtime'];
+    }
+
+    // Underutilized Servers
+    if(isValid(data['underutilized servers']) && data['underutilized servers'] > 0) {
+      delete allRecordWarnings['underutilized servers'];
+    }
+
+    // Key Mission Facilities
+    if(isValid(data['key mission facility']) && data['key mission facility'].toLowerCase() == 'yes') {
+      delete allRecordWarnings['key mission facilities'];
+    }
+  }
+
   errorCount += errors.length;
   warningCount += warnings.length;
 
@@ -259,27 +308,35 @@ function showErrors(data, errors, warnings) {
     classes.push('has-warnings');
     msgs = msgs.concat(showCategory('Warnings', warnings));
   }
+
   msgs.push(buildDivider());
-  showBlock(msgs, classes);
+  showBlock(msgs, classes.join(' '));
 }
 
 function showCategory(label, errors) {
   let msgs = [];
   if(errors.length) {
-    msgs.push(buildMsg(label+':', 1));
+    msgs.push(buildMsg(label+':', 'indent-1 list-'+label.toLowerCase().replace(' ', '-')));
     for(let i = 0; i < errors.length; i++) {
-      msgs.push(buildMsg(errors[i], 2));
+      msgs.push(buildMsg(errors[i], 'indent-2 list-'+label.toLowerCase().replace(' ', '-')));
     }
   }
   return msgs;
 }
 
 function parseDone() {
-  msgs = [
+  msgs = [];
+
+  if(hasValidFacilities && Object.values(allRecordWarnings).length > 0) {
+    msgs = msgs.concat(showCategory('General Warnings', Object.values(allRecordWarnings)));
+    msgs.push(buildDivider());
+  }
+
+  msgs = msgs.concat([
     buildMsg('Inventory validation complete.'),
     buildMsg(recordCount + ' records processed.'),
     buildMsg('')
-  ]
+  ]);
   if(errorCount > 0) {
     msgs.push(
       buildMsg('<strong class="error">' + errorCount + ' errors were found.  You must resolved these errors before submitting your inventory data!</strong>')
