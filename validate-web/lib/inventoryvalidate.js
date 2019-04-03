@@ -54,11 +54,16 @@ var requiredFields = {
 };
 
 function buildMsg(msg, classes) {
-  let elm = $('<div class="message">'+msg+'</div>');
-  if(classes) {
-    elm.addClass(classes);
+  if(msg) {
+    let elm = $('<div class="message">'+msg+'</div>');
+    if(classes) {
+      elm.addClass(classes);
+    }
+    return elm;
   }
-  return elm;
+  else {
+    return '';
+  }
 }
 
 function showBlock(elms, classes) {
@@ -68,6 +73,11 @@ function showBlock(elms, classes) {
   }
 
   for(let i = 0; i < elms.length; i++) {
+    // If there's a blank after this, just add padding instead to be more web-friendly
+    if(typeof elms[i+1] !== 'undefined' && !elms[i+1]) {
+      elms[i].addClass('pad-bottom');
+    }
+
     container.append(elms[i]);
   }
   $('#results').append(container);
