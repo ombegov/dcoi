@@ -114,9 +114,16 @@ function processRow(row) {
   }
 }
 
+function isTiered(data) {
+  return isValid(data['data center tier']) &&
+        validTiers.indexOf(data['data center tier'].toLowerCase()) >= 0;
+}
+
 function checkErrors(data) {
-  let warnings = [];
-  let errors = [];
+  let results = {
+    warnings: [],
+    errors: []
+  };
 
   /*
    * Error checking.
@@ -158,7 +165,16 @@ function checkErrors(data) {
 
   for(let i = 0; i < required.length; i++) {
     if( typeof data[required[i]] == 'undefined' || data[required[i]].trim().length == 0 ) {
-      errors.push('The field "' + required[i] + '" must be filled in.');
+      results['errors'].push('The field "' + required[i] + '" must be filled in.');
+    }
+  }
+
+  // Closing Stage
+  if(isValid(data['closing stage']) &&
+      ['closed', 'migration execution'].indexOf(data['closing stage'].toLowerCase()) > -1) {
+
+    if(!isValid(data['closing quarter']) || !isValid(data['closing fiscal year'])) {
+       results['errors'].push('If a facility has a closing stage of "Closed" or "Migration Execution", both Closing Year and Closing Quarter must be filled in.');
     }
   }
 
@@ -166,13 +182,10 @@ function checkErrors(data) {
    * If the record is not valid, this is assumed to be bad data and we don't do any further error checks.
    */
   if(!applicable) {
-    errorCount += errors.length;
-    warningCount += warnings.length;
+    errorCount += results['errors'].length;
+    warningCount += results['warnings'].length;
 
-    return {
-      errors: errors,
-      warnings: warnings
-    }
+    return results;
   }
 
   // Generic validation check
@@ -182,74 +195,68 @@ function checkErrors(data) {
     let values = validValues[field];
 
     if(isValid(data[field]) && values.indexOf(data[field].toLowerCase()) == -1) {
-      errors.push('The value for "'+ field +'" is not valid, must be one of: "' + values.join('", "') + '". The value given was "' + data[field] + '".');
+      results['errors'].push('The value for "'+ field +'" is not valid, must be one of: "' + values.join('", "') + '". The value given was "' + data[field] + '".');
     }
   }
 
   // Cloud Provider
   if(data['ownership type'].toLowerCase() == 'using cloud provider' && data['data center tier'].toLowerCase() != 'using cloud provider') {
-    errors.push('Data Center Tier must be "Using Cloud Provider" if Ownership Type is "Using Cloud Provider".');
+    results['errors'].push('Data Center Tier must be "Using Cloud Provider" if Ownership Type is "Using Cloud Provider".');
   }
 
   // Shared Service
   if(data['ownership type'].toLowerCase() == 'colocation' && !isValid(data['inter-agency shared services position'])) {
-    errors.push('Inter-Agency Shared Services Position must be filled in if Ownership Type is "Colocation".');
+    results['errors'].push('Inter-Agency Shared Services Position must be filled in if Ownership Type is "Colocation".');
   }
 
   // KMFs
   if(isValid(data['key mission facility']) && data['key mission facility'].toLowerCase() == 'yes') {
     if(!isValid(data['key mission facility type'])) {
-      errors.push('Key Mission Facilities must have a Key Mission Facility Type.');
-    }
-  }
-
-  // Closing Stage
-  if(isValid(data['closing stage']) &&
-      ['closed', 'migration execution'].indexOf(data['closing stage'].toLowerCase()) > -1) {
-
-    if(!isValid(data['closing quarter']) || !isValid(data['closing fiscal year'])) {
-       errors.push('If a facility has a closing stage of "Closed" or "Migration Execution", both Closing Year and Closing Quarter must be filled in.');
+      results['errors'].push('Key Mission Facilities must have a Key Mission Facility Type.');
     }
   }
 
   // Availability
   if(isValid(data['planned hours of facility availability']) && data['planned hours of facility availability'] == 0) {
-    errors.push('Planned Hours of Facility Availability must be greater than 0.');
+    results['errors'].push('Planned Hours of Facility Availability must be greater than 0.');
   }
 
   /*
    * Data validation rules. This should catch any bad data. (warnings)
    */
 
+  // Non-tiered
+  if(!isTiered(data) && data['ownership type'].toLowerCase() == 'agency owned') {
+    results['warnings'].push('Only tiered data centers need to be reported, marked as "' + data['data center tier'] + '"');
+  }
+
   // Electricity
   if(isValid(data['electricity is metered']) && data['electricity is metered'].toLowerCase() == 'yes') {
     if(!isValid(data['avg electricity usage']) || !isValid(data['avg it electricity usage'])) {
-      warnings.push('If Electricity is Metered equals "Yes", both Avg Electricity Usage and Avg IT Electricity Usage should be filled in.');
+      results['warnings'].push('If Electricity is Metered equals "Yes", both Avg Electricity Usage and Avg IT Electricity Usage should be filled in.');
     }
     else if(parseFloat(data['avg electricity usage']) <= parseFloat(data['avg it electricity usage'])) {
-      warnings.push('Avg Electricity Usage should be greater than Avg IT Electricity Usage');
+      results['warnings'].push('Avg Electricity Usage should be greater than Avg IT Electricity Usage');
     }
-
   }
 
   // KMFs
   if(isValid(data['key mission facility type']) && isValid(data['key mission facility']) &&
       data['key mission facility'].toLowerCase() != 'yes') {
-    warnings.push('Key Mission Facility Type should only be present if Key Mission Facility is "Yes".');
+    results['warnings'].push('Key Mission Facility Type should only be present if Key Mission Facility is "Yes".');
   }
 
   if(isValid(data['key mission facility']) && data['key mission facility'].toLowerCase() == 'yes') {
-    if(isValid(data['data center tier']) &&
-        validTiers.indexOf(data['data center tier'].toLowerCase()) == -1) {
-      warnings.push('Non-tiered data centers should not be Key Mission Facilities. Key Mission Facilities should be Tier 1, Tier 2, Tier 3, or Tier 4 for Data Center Tier.');
+    if(!isTiered(data)) {
+      results['warnings'].push('Non-tiered data centers should not be Key Mission Facilities. Key Mission Facilities should be Tier 1, Tier 2, Tier 3, or Tier 4 for Data Center Tier.');
     }
 
     if(isValid(data['ownership type']) && data['ownership type'].toLowerCase() != 'agency owned') {
-      warnings.push('Key Mission Facilities should be "Agency Owned" for Ownership Type.');
+      results['warnings'].push('Key Mission Facilities should be "Agency Owned" for Ownership Type.');
     }
 
     if(isValid(data['closing stage']) && data['closing stage'].toLowerCase() != 'not closing') {
-      warnings.push('Key Mission Facilities should be "Not Closing" for Closing Stage.');
+      results['warnings'].push('Key Mission Facilities should be "Not Closing" for Closing Stage.');
     }
   }
 
@@ -262,7 +269,7 @@ function checkErrors(data) {
     data['planned hours of facility availability'] > 0 &&
     data['planned hours of facility availability'] < minimumHours
    ) {
-    warnings.push('Planned Hours of Facility Availability for a quarter should usually be at least ' + minimumHours + '.');
+    results['warnings'].push('Planned Hours of Facility Availability for a quarter should usually be at least ' + minimumHours + '.');
   }
 
   /*
@@ -285,13 +292,10 @@ function checkErrors(data) {
     }
   }
 
-  errorCount += errors.length;
-  warningCount += warnings.length;
+  errorCount += results['errors'].length;
+  warningCount += results['warnings'].length;
 
-  return {
-    errors: errors,
-    warnings: warnings
-  }
+  return results;
 }
 
 function showErrors(data, errors, warnings) {
