@@ -185,7 +185,7 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
     required_fields = ['agency abbreviation', 'component', 'record validity', #'data center name',
       'ownership type', 'gross floor area', 'data center tier', 'key mission facility', 'electricity is metered',
       'underutilized servers', 'actual hours of facility downtime', 'planned hours of facility availability',
-      'rack count', 'total mainframes', 'total hpc cluster nodes', 'total virtual hosts', 'closing stage'
+      'rack count', 'total servers', 'total mainframes', 'total hpc cluster nodes', 'total virtual hosts', 'closing stage'
     ]
     if row.get('record validity', '').lower() == 'invalid facility':
       required_fields = ['agency abbreviation', 'component', 'record validity']
@@ -202,7 +202,7 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
       hasValidFacilities = True
 
     elif row.get('closing stage', '').lower() == 'closed':
-      required_fields = ['agency abbreviation', 'component', 'record validity', 'ownership type', 'gross floor area', 'data center tier', 'rack count', 'total mainframes', 'total hpc cluster nodes', 'total virtual hosts', 'closing stage']
+      required_fields = ['agency abbreviation', 'component', 'record validity', 'ownership type', 'gross floor area', 'data center tier', 'closing stage']
     else:
       applicable = True
       hasValidFacilities = True

@@ -40,12 +40,11 @@ var requiredFields = {
     'agency abbreviation', 'component', 'record validity', /*'data center name',*/
     'ownership type', 'gross floor area', 'data center tier', 'key mission facility', 'electricity is metered',
     'underutilized servers', 'actual hours of facility downtime', 'planned hours of facility availability',
-    'rack count', 'total mainframes', 'total hpc cluster nodes', 'total virtual hosts', 'closing stage',
+    'rack count', 'total servers', 'total mainframes', 'total hpc cluster nodes', 'total virtual hosts', 'closing stage',
   ],
   closed: [
     'agency abbreviation', 'component', 'record validity', /*'data center name',*/
-    'ownership type', 'gross floor area', 'data center tier', 'rack count', 'total mainframes',
-    'total hpc cluster nodes', 'total virtual hosts', 'closing stage'
+    'ownership type', 'gross floor area', 'data center tier', 'closing stage'
   ],
   invalid: ['agency abbreviation', 'component', 'record validity'],
   otherOwner: ['agency abbreviation', 'component', 'record validity', 'closing stage'],
