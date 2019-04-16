@@ -299,6 +299,13 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
       if row.get('closing stage', '').lower() != 'not closing':
         warnings.append('Key Mission Facilities should be "Not Closing" for Closing Stage.')
 
+    # Total Servers vs Total Virtual Hosts
+    #
+    if (row.get('total servers') and row.get('total virtual hosts') and row.get('total mainframes') and
+      int(row.get('total virtual hosts')) > (int(row.get('total servers')) + int(row.get('total mainframes')))
+    ):
+      warnings.append('Total Virtual Hosts should not be greater than Total Servers plus Total Mainframes. Total Virtual Hosts represents the physical servers or mainframes dedicated to providing a virtualization layer to guest operating systems. These should be also included in the Total counts. Total Virtual Hosts is not a count of the guest operating systems (Total Virtual OS in previous collections).')
+
     # Flags for all-records. Checks to see if agencies are generally following our guidance.
     #
     if applicable:
