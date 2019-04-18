@@ -46,18 +46,26 @@
   Loading...
 </div>
 <div class="after-load">
+  <div class="form-row">
+    <label for="agency-list">Agency</label>
+    <select id="agency-list"></select>
+  </div>
   <div class="row">
     <div id="count" class="chart">
       <h2>Closures Over Time</h2>
+      <div class="placeholder"></div>
     </div>
     <div id="savings" class="chart">
       <h2>Cost Savings &amp; Avoidance</h2>
+      <div class="placeholder"></div>
     </div>
     <div id="tier" class="chart">
       <h2>Current Count by Tier</h2>
+      <div class="placeholder"></div>
     </div>
   <div id="kmfs" class="chart">
     <h2>Key Misson Facilities by Type</h2>
+    <div class="placeholder"></div>
   </div>
   </div>
   <div class="row">
@@ -68,21 +76,49 @@
 
 <script>
 
+function displayMessage(id, message) {
+  let elm = $('#'+id+' .placeholder');
+  elm.empty();
+  elm.append(message);
+}
+
 function chartWrap(id, chartOptions) {
   let newName = id+'-canvas';
-  $('#'+id).append('<canvas id="'+newName+'"></canvas>');
+  let elm = $('#'+id+' .placeholder');
+  elm.empty();
+  elm.append('<canvas id="'+newName+'"></canvas>');
   return new Chart( $('#'+newName), chartOptions );
 }
 
+var allData;
 $( document ).ready(function (){
   $.getJSON('./data.json', function(data) {
+    allData = data;
+    setAgencies(Object.keys(data));
+    showData(data, 'All Agencies');
+  });
+
+  function setAgencies(agencies) {
+    // Move 'All Agencies' to the front.
+    agencies.splice( $.inArray('All Agencies', agencies), 1 );
+    agencies.unshift('All Agencies');
+
+    let agencyList = $('#agency-list');
+    for(let i = 0; i < agencies.length; i++) {
+      agencyList.append($('<option value="'+agencies[i]+'">'+agencies[i]+'</option>'));
+    }
+
+    agencyList.change(function(e) {
+      $('.loading').show();
+      $('after-load').hide();
+      showData(allData, $(e.target).val());
+    });
+  }
+
+  function showData(data, agency) {
     // Show our charts after we have data.
     $('.loading').hide();
     $('after-load').show();
-
-    //data = $.parseJSON(data);
-
-    let agency = 'All Agencies';
 
     let colors = {
       'green': '#28a745',
@@ -112,8 +148,6 @@ $( document ).ready(function (){
       let closeState = ['closed', 'open', 'kmf'];
       let timeperiods = Object.keys(data['All Agencies']['datacenters'][ closeState[0] ]).sort();
       let mostRecent = timeperiods[ timeperiods.length - 1 ];
-
-
 
       // Data Center Counts
       countData = {
@@ -209,10 +243,21 @@ $( document ).ready(function (){
 
   // Key Mission Facility Types
     function showKMFTypes(data, agency) {
-      let timeperiods = Object.keys(data[agency]['kmf']);
-      let mostRecent = timeperiods[ timeperiods.length - 1 ];
+      let timeperiods, mostRecent, types;
 
-      let types = Object.keys(data[agency]['kmf'][mostRecent]);
+      // If we don't have types in the most recent list, we don't have any KMFs.
+      try {
+        timeperiods = Object.keys(data[agency]['kmf']);
+        mostRecent = timeperiods[ timeperiods.length - 1 ];
+        types = Object.keys(data[agency]['kmf'][mostRecent]);
+
+        console.log(types);
+      }
+      catch(e) {
+        displayMessage('kmfs', 'No Key Mission Facilities reported for this quarter.');
+        return;
+      }
+
       // "Other" goes last.
       types.splice( types.indexOf('Other'), 1 );
       types.push('Other');
@@ -289,8 +334,6 @@ $( document ).ready(function (){
       };
 
       $.each(timeperiods, function(i, timeperiod) {
-        console.log(timeperiod, data[agency]['savings'][timeperiod]);
-
         plannedData['data'].push( Math.round(data[agency]['savings'][timeperiod]['Planned']) );
         achievedData['data'].push( Math.round(data[agency]['savings'][timeperiod]['Achieved']) );
       });
@@ -322,9 +365,7 @@ $( document ).ready(function (){
 
     // Metrics
 
-  });
-
-
+  }
 });
 
 </script>
