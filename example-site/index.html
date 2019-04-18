@@ -56,9 +56,9 @@
     <div id="tier" class="chart">
       <h2>Current Count by Tier</h2>
     </div>
-	<div id="kmfs" class="chart">
-	  <h2>Key Misson Facilities by Type</h2>
-	</div>
+  <div id="kmfs" class="chart">
+    <h2>Key Misson Facilities by Type</h2>
+  </div>
   </div>
   <div class="row">
     <div id="energyMetering" class="chart"></div>
@@ -91,22 +91,22 @@ $( document ).ready(function (){
       'trans-blue': 'rgba(00, 123, 255, 0.4)',
       'grey': '#555555',
       'trans-grey': 'rgba(55, 55, 55, 0.4)',
-	  'red': '#dc3545',
-	  'yellow': '#ffc107',
-	  'teal': '#17a2b8',
-	  'purple': '#563d7c'
-    }
+      'red': '#dc3545',
+      'yellow': '#ffc107',
+      'teal': '#17a2b8',
+      'purple': '#563d7c'
+    };
 
 
     let stateColors = {'closed': colors['grey'], 'open': colors['blue'], 'kmf': colors['green']};
-	let kmfTypeColors = {
+    let kmfTypeColors = {
       'Mission': colors['green'],
-	  'Location': colors['yellow'],
-	  'Processing': colors['teal'],
-	  'Control': colors['blue'],
-	  'Legal': colors['red'],
-	  'Other': colors['purple']
-	};
+      'Location': colors['yellow'],
+      'Processing': colors['teal'],
+      'Control': colors['blue'],
+      'Legal': colors['red'],
+      'Other': colors['purple']
+    };
 
     function showClosures(data, agency) {
       let closeState = ['closed', 'open', 'kmf'];
@@ -207,15 +207,15 @@ $( document ).ready(function (){
     }
     showClosures(data, agency);
 
-	// Key Mission Facility Types
+  // Key Mission Facility Types
     function showKMFTypes(data, agency) {
       let timeperiods = Object.keys(data[agency]['kmf']);
       let mostRecent = timeperiods[ timeperiods.length - 1 ];
 
       let types = Object.keys(data[agency]['kmf'][mostRecent]);
-	  // "Other" goes last.
+      // "Other" goes last.
       types.splice( types.indexOf('Other'), 1 );
-	  types.push('Other');
+      types.push('Other');
 
       // Data Center Counts
       kmfData = {
@@ -236,30 +236,30 @@ $( document ).ready(function (){
             yAxes: [{
             }]
           },
-		  legend: {
-			display: false
-		  }
+          legend: {
+            display: false
+          }
         },
         data: {
           labels: types,
-		  datasets: [{
-			data: [],
-			backgroundColor: []
-		  }]
+          datasets: [{
+            data: [],
+            backgroundColor: []
+          }]
         }
       }
 
       types.forEach(function(type) {
-	    kmfData.data.datasets[0].backgroundColor.push(kmfTypeColors[type]);
-		try {
-		  kmfData.data.datasets[0].data.push(
-			data[agency]['kmf'][mostRecent][type]['total']
-		  );
-		}
-		catch(e) {
-		  return null;
-		}
-	  })
+        kmfData.data.datasets[0].backgroundColor.push(kmfTypeColors[type]);
+        try {
+          kmfData.data.datasets[0].data.push(
+          data[agency]['kmf'][mostRecent][type]['total']
+          );
+        }
+        catch(e) {
+          return null;
+        }
+      });
 
       let kmfChart = chartWrap('kmfs', kmfData);
     }
