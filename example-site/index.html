@@ -75,7 +75,7 @@ function chartWrap(id, chartOptions) {
 }
 
 $( document ).ready(function (){
-  $.get('/data.json', function(data) {
+  $.getJSON('./data.json', function(data) {
     // Show our charts after we have data.
     $('.loading').hide();
     $('after-load').show();
