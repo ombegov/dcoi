@@ -1,3 +1,14 @@
+var allData;
+
+$( document ).ready(function (){
+  loadApp();
+  $.getJSON('./data.json', function(data) {
+    allData = data;
+    setAgencies(Object.keys(data));
+    showData(data, 'All Agencies');
+  });
+});
+
 function loadApp() {
   $('#app').html('<div class="loading">Loading...</div>\
 <div class="after-load">\
@@ -43,16 +54,6 @@ function chartWrap(id, chartOptions) {
   elm.append('<canvas id="'+newName+'"></canvas>');
   return new Chart( $('#'+newName), chartOptions );
 }
-
-var allData;
-$( document ).ready(function (){
-  loadApp();
-  $.getJSON('./data.json', function(data) {
-    allData = data;
-    setAgencies(Object.keys(data));
-    showData(data, 'All Agencies');
-  });
-});
 
 function setAgencies(agencies) {
   // Move 'All Agencies' to the front.
