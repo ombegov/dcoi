@@ -102,10 +102,17 @@ for agency in agencies:
 
   if r.status_code == 200 and len(r.text):
     text = filter_nonprintable(r.text)
-    data = parse(text)
+    try:
+      data = parse(text)
+    except:
+      print('! Error in file.')
+      missingAgencies.append(agency)
+      continue
 
-    # print(data) # DEBUG
-    # TODO: Validate
+    if not 'closures' in data:
+      print('! Using old schema.')
+      missingAgencies.append(agency)
+      continue;
 
     # Insert into database.
 
@@ -138,6 +145,9 @@ for agency in agencies:
           # We store these floats as strings due to Python's precision.
           # https://github.com/ombegov/dcoi/issues/6
           insertData[field] = str(row[field])
+
+      # Delete any previous plans.
+      conn.execute('DELETE FROM stratplans WHERE agency=:agency', insertData)
 
       # Create a string for the insert statement.
       insertString = 'INSERT INTO stratplans ({}) VALUES({})'.format(
