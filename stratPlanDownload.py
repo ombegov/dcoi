@@ -119,6 +119,9 @@ for agency in agencies:
       missingAgencies.append(agency)
       continue;
 
+    # Delete any previous plans.
+    conn.execute('DELETE FROM stratplans WHERE agency=:agency', {'agency': agency})
+
     # Insert into database.
 
     # loop over our categories.
@@ -150,9 +153,6 @@ for agency in agencies:
           # We store these floats as strings due to Python's precision.
           # https://github.com/ombegov/dcoi/issues/6
           insertData[field] = str(row[field])
-
-      # Delete any previous plans.
-      conn.execute('DELETE FROM stratplans WHERE agency=:agency', insertData)
 
       # Create a string for the insert statement.
       insertString = 'INSERT INTO stratplans ({}) VALUES({})'.format(
