@@ -70,8 +70,7 @@ metrics = [
   'servers',
   'mainframes',
   'hpcs',
-  'downtime',
-  'plannedUptime',
+  'availability',
   'energyMetering',
   'underutilizedServers'
 ]
@@ -179,15 +178,27 @@ tier,
 COUNT(*) AS count,
 SUM(electricityMetered) AS energyMetering,
 SUM(underutilizedServers) AS underutilizedServers,
-SUM(downtimeHours) AS downtime,
-SUM(plannedAvailabilityHours) AS plannedUptime,
+SUM(
+  CASE LOWER(tier)
+    WHEN 'tier 1' THEN
+      CASE WHEN (plannedAvailabilityHours - downtimeHours) / plannedAvailabilityHours >= .99671 THEN 1 ELSE 0 END
+    WHEN 'tier 2' THEN
+      CASE WHEN (plannedAvailabilityHours - downtimeHours) / plannedAvailabilityHours >= .99749 THEN 1 ELSE 0 END
+    WHEN 'tier 3' THEN
+      CASE WHEN (plannedAvailabilityHours - downtimeHours) / plannedAvailabilityHours >= .99982 THEN 1 ELSE 0 END
+    WHEN 'tier 4' THEN
+      CASE WHEN (plannedAvailabilityHours - downtimeHours) / plannedAvailabilityHours >= .99995 THEN 1 ELSE 0 END
+    ELSE 0
+  END
+) AS availability,
 SUM(mainframesCount) AS mainframes,
 SUM(HPCCount) AS hpcs,
 SUM(serverCount) AS servers,
 SUM(virtualHostCount) AS virtualization
 FROM datacenters
-WHERE closingStage = 'Not Closed'
-AND ownershipType = 'Agency Owned'
+WHERE LOWER(closingStage) = 'not closing'
+AND LOWER(ownershipType) = 'agency owned'
+AND LOWER(tier) IN ('tier 1', 'tier 2', 'tier 3', 'tier 4')
 GROUP BY agency, year, quarter, tier
 ORDER BY agency, year, quarter, tier
 ''')
@@ -242,111 +253,3 @@ print( jsonCleanup(json.dumps(data)) )
 conn.close()
 
 exit()
-
-"""
-Example JSON format (numbers are made up!)
-
-{
-  "All Agencies": {
-    "datacenters": {
-      "open": {
-        "2018 Q4": {
-          "total": 3600,
-          "tier 1": 2000,
-          "tier 2": 1000,
-          "tier 3": 500,
-          "tier 4": 100,
-          "nontiered": 5000
-        }
-      },
-      "closed": {
-        "2018 Q4": {
-          "total": 3600,
-          "tier 1": 2000,
-          "tier 2": 1000,
-          "tier 3": 500,
-          "tier 4": 100,
-          "nontiered": 4000
-        }
-      },
-      "kmf": {
-        "2018 Q4": {
-          "total": 700,
-          "tier 1": 300,
-          "tier 2": 200,
-          "tier 3": 150,
-          "tier 4": 50
-        }
-      }
-    },
-    "savings": {
-      "2017": {
-        "planned": 300,
-        "actual": 600
-      },
-      "2018": {
-        "planned": 100,
-        "actual": 500
-      }
-    },
-    "metrics": {
-      "virtualization": {
-        "total": 3000,
-        "tier 1": 300,
-        "tier 2": 500,
-        "tier 3": 1200,
-        "tier 4": 1000
-      },
-      "servers":  {
-        "total": 6000,
-        "tier 1": 1000,
-        "tier 2": 1000,
-        "tier 3": 2000,
-        "tier 4": 2000
-      },
-      "mainframes": {
-        "total": 360,
-        "tier 1": 200,
-        "tier 2": 100,
-        "tier 3": 50,
-        "tier 4": 10
-      },
-      "hpcs": {
-        "total": 30,
-        "tier 1": 0,
-        "tier 2": 0,
-        "tier 3": 10,
-        "tier 4": 20
-      },
-      "downtime":  {
-        "total": 36,
-        "tier 1": 20,
-        "tier 2": 10,
-        "tier 3": 5,
-        "tier 4": 1
-      },
-      "plannedUptime": {
-        "total": 360000,
-        "tier 1": 200000,
-        "tier 2": 100000,
-        "tier 3": 50000,
-        "tier 4": 10000
-      },
-      "energyMetering": {
-        "total": 3600,
-        "tier 1": 2000,
-        "tier 2": 1000,
-        "tier 3": 500,
-        "tier 4": 100
-      },
-      "underutilizedServers": {
-        "total": 3600,
-        "tier 1": 2000,
-        "tier 2": 1000,
-        "tier 3": 500,
-        "tier 4": 100
-      }
-    }
-  }
-}
-"""
