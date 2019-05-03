@@ -73,10 +73,24 @@ def import_file(filename, q, conn):
   year = int(year)
 
   agencies = []
+  with io.open(filename, 'r') as datafile:
+    headings = None
 
-  with io.open(filename, 'r', encoding='utf-8-sig') as datafile:
-    reader = csv.DictReader(lower_headings(datafile))
-    for row in reader:
+    for line in datafile:
+      # Remove non-utf-8 characters that cause things to fail.
+      line = bytes(line, 'utf-8').decode('utf-8', 'ignore')
+
+      if headings == None:
+        headings = line.lower()
+        continue
+
+      # This is a mildly-hacky way too only parse the current line.
+      try:
+        reader = csv.DictReader([headings, line])
+        row = next(reader)
+      except StopIteration:
+        continue
+
       # We only want valid records.
       if row.get('record validity') != 'Valid Facility':
         continue
