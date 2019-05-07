@@ -17,8 +17,12 @@ function loadApp() {
     <select id="agency-list"></select>\
   </div>\
   <div class="row">\
-    <div id="count" class="chart">\
-      <h2>Closures Over Time</h2>\
+    <div id="count-all" class="chart">\
+      <h2>Closures Over Time (All)</h2>\
+      <div class="placeholder"></div>\
+    </div>\
+    <div id="count-tiered" class="chart">\
+      <h2>Closures Over Time (Tiered Only)</h2>\
       <div class="placeholder"></div>\
     </div>\
     <div id="savings" class="chart">\
@@ -130,10 +134,34 @@ function showData(data, agency) {
       },
       data: {
         labels: timeperiods.sort()
-      }
+      },
+      lines: [
+        { value: '2018 Q4' }
+      ]
     }
 
+    // Create a copy of this chart.
+    let countTierData = $.extend(true,{},countData);
+
     countData.data.datasets = closeState.map(function(state) {
+      return {
+        label: state,
+        backgroundColor: stateColors[state],
+        data: timeperiods.map(function(time) {
+          // If we have data for this time period, return it. Otherwise null.
+          try {
+            // Sum of "total" (Tiered) and "nontiered"
+            return data[agency]['datacenters'][state][time]['total'] +
+              data[agency]['datacenters'][state][time]['nontiered'];
+          }
+          catch(e) {
+            return 0;
+          }
+        })
+      };
+    });
+
+    countTierData.data.datasets = closeState.map(function(state) {
       return {
         label: state,
         backgroundColor: stateColors[state],
@@ -149,7 +177,9 @@ function showData(data, agency) {
       };
     });
 
-    let countChart = chartWrap('count', countData);
+    let countAllChart = chartWrap('count-all', countData);
+
+    let countTieredChart = chartWrap('count-tiered', countTierData);
 
     // By Tier
     tierData = {
@@ -236,6 +266,10 @@ function showData(data, agency) {
           xAxes: [{
           }],
           yAxes: [{
+            ticks: {
+              beginAtZero: true,
+              callback: function(value) {if (value % 1 === 0) {return value;}}
+            }
           }]
         },
         legend: {
