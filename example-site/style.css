@@ -1,19 +1,50 @@
-.row {
-  float: left;
+.charts {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 100vw;
+  justify-content: space-evenly;
 }
 
 .chart {
-  width: 500px;
+  flex-basis: 500px;
+  max-width: 500px;
+  flex-shrink: 0;
   margin-right: 15px;
   margin-bottom: 15px;
   padding: 10px;
-  float: left;
   border: 2px solid #555555;
 }
 
-.chart h2 {
+.chart :last-child {
+  padding-bottom: 0;
+}
+
+.chart h3 {
   margin: 0;
 }
 
 .chart canvas {
+}
+
+/* For deployment replace this with bootstrap */
+.chart .table-holder table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.chart .table-holder th {
+
+}
+
+.chart .table-holder th,
+.chart .table-holder td {
+  font-size: 0.85rem;
+  text-align: center;
+  border-right: 1px solid #aaaaaa;
+  border-bottom: 1px solid #aaaaaa;
+  padding: 3px 4px;
+}
+
+.chart .table-holder tbody tr:nth-of-type(2n+1) {
+  background-color: #eeeeee;
 }
