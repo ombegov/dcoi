@@ -73,6 +73,7 @@ def import_file(filename, q, conn):
   year = int(year)
 
   agencies = []
+  rows = []
   with io.open(filename, 'r') as datafile:
     headings = None
 
@@ -99,20 +100,83 @@ def import_file(filename, q, conn):
       if row.get('agency abbreviation') not in agencies:
         agencies.append(row.get('agency abbreviation'))
 
-        print('Clearing {} {} q{}'.format(row.get('agency abbreviation'), year, quarter))
+        # When DEBUGging import problems, uncomment this.
+        #print('Clearing {} {} q{}'.format(row.get('agency abbreviation'), year, quarter))
+        #c.execute('DELETE FROM datacenters WHERE year=:year AND quarter=:quarter AND agency=:agency',
+        #  {
+        #    'year': year,
+        #    'quarter': quarter,
+        #    'agency': row.get('agency abbreviation')
+        #  }
+        #)
 
-        c.execute('DELETE FROM datacenters WHERE year=:year AND quarter=:quarter AND agency=:agency',
-          {
-            'year': year,
-            'quarter': quarter,
-            'agency': row.get('agency abbreviation')
-          }
-        )
+        # Flush previous rows.
+        if len(rows):
+          c.executemany('''
+            INSERT INTO datacenters
+            (
+              id,
+              quarter,
+              year,
+              agency,
+              component,
+              ownershipType,
+              sharedServicesPosition,
+              tier,
+              country,
+              grossFloorArea,
+              keyMissionFacility,
+              keyMissionFacilityType,
+              optimizationExempt,
+              electricityMetered,
+              avgElectricityUsage,
+              avgITElectricityUsage,
+              underutilizedServers,
+              downtimeHours,
+              plannedAvailabilityHours,
+              mainframesCount,
+              HPCCount,
+              serverCount,
+              virtualHostCount,
+              closingStage,
+              closingTargetDate,
+              comments
+            ) VALUES (
+              :id,
+              :quarter,
+              :year,
+              :agency,
+              :component,
+              :ownershipType,
+              :sharedServicesPosition,
+              :tier,
+              :country,
+              :grossFloorArea,
+              :keyMissionFacility,
+              :keyMissionFacilityType,
+              :optimizationExempt,
+              :electricityMetered,
+              :avgElectricityUsage,
+              :avgITElectricityUsage,
+              :underutilizedServers,
+              :downtimeHours,
+              :plannedAvailabilityHours,
+              :mainframesCount,
+              :HPCCount,
+              :serverCount,
+              :virtualHostCount,
+              :closingStage,
+              :closingTargetDate,
+              :comments
+            )
+          ''', rows)
+          rows = []
+
         conn.commit()
 
       print(row.get('data center id'), year, quarter)
 
-      insertData = {
+      rows.append({
         'id' : row.get('data center id'),
         'quarter' : quarter,
         'year': year,
@@ -125,8 +189,8 @@ def import_file(filename, q, conn):
         'grossFloorArea' : row.get('gross floor area'),
         'keyMissionFacility' : int(row.get('key mission facility').lower() == 'yes'),
         'keyMissionFacilityType' : row.get('key mission facility type'),
-        'optimizationExempt': int(row.get('optimization exempt') == 'yes'),
-        'electricityMetered' : int(row.get('electricity is metered') == 'yes'),
+        'optimizationExempt': int(row.get('optimization exempt', '').lower() == 'yes'),
+        'electricityMetered' : int(row.get('electricity is metered').lower() == 'yes'),
         'avgElectricityUsage' : row.get('avg electricity usage'),
         'avgITElectricityUsage' : row.get('avg it electricity usage'),
         'underutilizedServers' : row.get('underutilized servers'),
@@ -139,68 +203,70 @@ def import_file(filename, q, conn):
         'closingStage' : row.get('closing stage'),
         'closingTargetDate' : row.get('closing fiscal year') + ' ' + row.get('closing quarter'),
         'comments' : row.get('comments')
-      }
+      })
 
-      c.execute('''
-        INSERT INTO datacenters
-        (
-          id,
-          quarter,
-          year,
-          agency,
-          component,
-          ownershipType,
-          sharedServicesPosition,
-          tier,
-          country,
-          grossFloorArea,
-          keyMissionFacility,
-          keyMissionFacilityType,
-          optimizationExempt,
-          electricityMetered,
-          avgElectricityUsage,
-          avgITElectricityUsage,
-          underutilizedServers,
-          downtimeHours,
-          plannedAvailabilityHours,
-          mainframesCount,
-          HPCCount,
-          serverCount,
-          virtualHostCount,
-          closingStage,
-          closingTargetDate,
-          comments
-        ) VALUES (
-          :id,
-          :quarter,
-          :year,
-          :agency,
-          :component,
-          :ownershipType,
-          :sharedServicesPosition,
-          :tier,
-          :country,
-          :grossFloorArea,
-          :keyMissionFacility,
-          :keyMissionFacilityType,
-          :optimizationExempt,
-          :electricityMetered,
-          :avgElectricityUsage,
-          :avgITElectricityUsage,
-          :underutilizedServers,
-          :downtimeHours,
-          :plannedAvailabilityHours,
-          :mainframesCount,
-          :HPCCount,
-          :serverCount,
-          :virtualHostCount,
-          :closingStage,
-          :closingTargetDate,
-          :comments
-        )
-      ''', insertData)
+  # Flush previous rows.
+  if len(rows):
+    c.executemany('''
+      INSERT INTO datacenters
+      (
+        id,
+        quarter,
+        year,
+        agency,
+        component,
+        ownershipType,
+        sharedServicesPosition,
+        tier,
+        country,
+        grossFloorArea,
+        keyMissionFacility,
+        keyMissionFacilityType,
+        optimizationExempt,
+        electricityMetered,
+        avgElectricityUsage,
+        avgITElectricityUsage,
+        underutilizedServers,
+        downtimeHours,
+        plannedAvailabilityHours,
+        mainframesCount,
+        HPCCount,
+        serverCount,
+        virtualHostCount,
+        closingStage,
+        closingTargetDate,
+        comments
+      ) VALUES (
+        :id,
+        :quarter,
+        :year,
+        :agency,
+        :component,
+        :ownershipType,
+        :sharedServicesPosition,
+        :tier,
+        :country,
+        :grossFloorArea,
+        :keyMissionFacility,
+        :keyMissionFacilityType,
+        :optimizationExempt,
+        :electricityMetered,
+        :avgElectricityUsage,
+        :avgITElectricityUsage,
+        :underutilizedServers,
+        :downtimeHours,
+        :plannedAvailabilityHours,
+        :mainframesCount,
+        :HPCCount,
+        :serverCount,
+        :virtualHostCount,
+        :closingStage,
+        :closingTargetDate,
+        :comments
+      )
+    ''', rows)
 
-      conn.commit()
+    conn.commit()
 
 if __name__ == '__main__':
   main()

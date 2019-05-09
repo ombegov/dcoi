@@ -24,21 +24,22 @@ print ('Filename: ', filename)
 conn = sqlite3.connect(config.DB_CONFIG['file'])
 c = conn.cursor()
 
+rows = []
 with open(filename, 'r') as datafile:
   reader = csv.DictReader(datafile)
   for row in reader:
     quarter, year = row['quarter'].split(' ')
-    
+
     quarter = int(quarter[1])
     year = int(year)
-    
+
     # We only want valid, recent records.
     if row['recordValidity'] != 'Valid Facility' or year < 2017:
       continue
-  
+
     print(row['dataCenterID'], year, quarter)
-    
-    insertData = {
+
+    rows.append({
       'id' : row['dataCenterID'],
       'quarter' : quarter,
       'year': year,
@@ -49,9 +50,9 @@ with open(filename, 'r') as datafile:
       'tier' : row['dataCenterTier'],
       'country' : row['country'],
       'grossFloorArea' : row['grossFloorArea'],
-      'keyMissionFacility' : row['keyMissionFacility'],
+      'keyMissionFacility' : int(row['keyMissionFacility'].lower() == 'yes'),
       'keyMissionFacilityType' : row['keyMissionFacility1'],
-      'electricityMetered' : row['tcoElectricityIsMetered'],
+      'electricityMetered' : int(row['tcoElectricityIsMetered'].lower() == 'yes'),
       'avgElectricityUsage' : row['averageElectricityUsage'],
       'avgITElectricityUsage' : row['averageITElectricityUsage'],
       'underutilizedServers' : row['underutilizedServers'],
@@ -64,66 +65,65 @@ with open(filename, 'r') as datafile:
       'closingStage' : row['closingStage'],
       'closingTargetDate' : row['closingTargetDate'],
       'comments' : row['comments']
-    }
-  
-    c.execute('''
-      INSERT INTO datacenters
-      (
-        id,
-        quarter,
-        year,
-        agency,
-        component,
-        ownershipType,
-        sharedServicesPosition,
-        tier,
-        country,
-        grossFloorArea,
-        keyMissionFacility,
-        keyMissionFacilityType,
-        electricityMetered,
-        avgElectricityUsage,
-        avgITElectricityUsage,
-        underutilizedServers,
-        downtimeHours,
-        plannedAvailabilityHours,
-        mainframesCount,
-        HPCCount,
-        serverCount,
-        virtualHostCount,
-        closingStage,
-        closingTargetDate,
-        comments
-      ) VALUES (        
-        :id,
-        :quarter,
-        :year,
-        :agency,
-        :component,
-        :ownershipType,
-        :sharedServicesPosition,
-        :tier,
-        :country,
-        :grossFloorArea,
-        :keyMissionFacility,
-        :keyMissionFacilityType,
-        :electricityMetered,
-        :avgElectricityUsage,
-        :avgITElectricityUsage,
-        :underutilizedServers,
-        :downtimeHours,
-        :plannedAvailabilityHours,
-        :mainframesCount,
-        :HPCCount,
-        :serverCount,
-        :virtualHostCount,
-        :closingStage,
-        :closingTargetDate,
-        :comments
-      )
-    ''', insertData)
-    
-    
+    })
+
+  c.executemany('''
+    INSERT INTO datacenters
+    (
+      id,
+      quarter,
+      year,
+      agency,
+      component,
+      ownershipType,
+      sharedServicesPosition,
+      tier,
+      country,
+      grossFloorArea,
+      keyMissionFacility,
+      keyMissionFacilityType,
+      electricityMetered,
+      avgElectricityUsage,
+      avgITElectricityUsage,
+      underutilizedServers,
+      downtimeHours,
+      plannedAvailabilityHours,
+      mainframesCount,
+      HPCCount,
+      serverCount,
+      virtualHostCount,
+      closingStage,
+      closingTargetDate,
+      comments
+    ) VALUES (
+      :id,
+      :quarter,
+      :year,
+      :agency,
+      :component,
+      :ownershipType,
+      :sharedServicesPosition,
+      :tier,
+      :country,
+      :grossFloorArea,
+      :keyMissionFacility,
+      :keyMissionFacilityType,
+      :electricityMetered,
+      :avgElectricityUsage,
+      :avgITElectricityUsage,
+      :underutilizedServers,
+      :downtimeHours,
+      :plannedAvailabilityHours,
+      :mainframesCount,
+      :HPCCount,
+      :serverCount,
+      :virtualHostCount,
+      :closingStage,
+      :closingTargetDate,
+      :comments
+    )
+  ''', rows)
+
 conn.commit()
 conn.close()
 
