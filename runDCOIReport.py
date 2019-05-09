@@ -191,6 +191,8 @@ SUM(
     ELSE 0
   END
 ) AS availability,
+SUM(plannedAvailabilityHours) AS plannedAvailability,
+SUM(downtimeHours) AS downtime,
 SUM(mainframesCount) AS mainframes,
 SUM(HPCCount) AS hpcs,
 SUM(serverCount) AS servers,
@@ -220,30 +222,41 @@ for row in c.fetchall():
     deepadd(data, allAgencies, 'metrics', metric, quarter, 'total', row[metric])
 
 
-# Calculate our cost savings
+# Export our strategic plan data.
 
 c.execute('''
 SELECT *
 FROM stratplans
-WHERE type=:type
-GROUP BY agency
+GROUP BY agency, type
 ORDER BY importDate DESC
-''', {'type': 'costSavings'})
+''')
 
 for row in c.fetchall():
-  for field,value in dict(row).items():
+  fieldname = row['type']
 
+  if row['type'] == 'costSavings':
+    fieldname = 'savings'
+
+  for field,value in dict(row).items():
     match = re.match(r'^fy([0-9]{2})([a-zA-Z_]+)$', field);
-    if match != None and value != None:
+
+    if field == 'methodology' and value:
+      deepadd(data, row['agency'], 'plan', fieldname+'-methodology', value)
+
+    elif match != None and value != None:
       year = 2000 + int(match.group(1))
-      type = match.group(2)
+      status = match.group(2)
 
       # Convert our value to a safe decimal instead of a float.
       # https://github.com/ombegov/dcoi/issues/6
-      value = Decimal(value)
+      if value:
+        try:
+          value = Decimal(value)
+        except:
+          continue
 
-      deepadd(data, row['agency'], 'savings', year, type, value)
-      deepadd(data, allAgencies, 'savings', year, type, value)
+      deepadd(data, row['agency'], 'plan', fieldname, year, status, value)
+      deepadd(data, allAgencies, 'plan', fieldname, year, status, value)
 
 
 print( jsonCleanup(json.dumps(data)) )
