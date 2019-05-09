@@ -60,6 +60,7 @@ c.execute('''
     fy20Planned TEXT,
     fy20Achieved TEXT,
     explanation TEXT,
+    methodology TEXT,
     costsOfClosures TEXT,
     costsOfOptimization TEXT,
     historicalCostSavings TEXT

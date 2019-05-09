@@ -80,6 +80,7 @@ fields = [
   'fy20Planned',
   'fy20Achieved',
   'explanation',
+  'methodology',
   'costsOfClosures',
   'costsOfOptimization',
   'historicalCostSavings'
