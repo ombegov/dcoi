@@ -203,6 +203,7 @@ FROM datacenters
 WHERE LOWER(closingStage) = 'not closing'
 AND LOWER(ownershipType) = 'agency owned'
 AND LOWER(tier) IN ('tier 1', 'tier 2', 'tier 3', 'tier 4')
+AND optimizationExempt != 1
 GROUP BY agency, year, quarter, tier
 ORDER BY agency, year, quarter, tier
 ''')
@@ -233,7 +234,11 @@ GROUP BY agency, type
 ORDER BY importDate DESC
 ''')
 
+agencies = []
 for row in c.fetchall():
+  if row['agency'] not in agencies:
+    agencies.append(row['agency'])
+
   fieldname = row['type']
 
   if row['type'] == 'costSavings':
@@ -260,6 +265,10 @@ for row in c.fetchall():
       deepadd(data, row['agency'], 'plan', fieldname, year, status, value)
       deepadd(data, allAgencies, 'plan', fieldname, year, status, value)
 
+# Availability is the only one that is an average, not a sum.
+for year, obj in data[allAgencies]['plan']['availability'].items():
+  data[allAgencies]['plan']['availability'][year]['Planned'] = data[allAgencies]['plan']['availability'][year]['Planned'] / len(agencies)
+  data[allAgencies]['plan']['availability'][year]['Achieved'] = data[allAgencies]['plan']['availability'][year]['Achieved'] / len(agencies)
 
 print( jsonCleanup(json.dumps(data)) )
 # TODO: Maybe export a file instead of just printing?
