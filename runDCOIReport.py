@@ -72,7 +72,9 @@ metrics = [
   'hpcs',
   'availability',
   'energyMetering',
-  'underutilizedServers'
+  'underutilizedServers',
+  'plannedAvailability',
+  'downtime'
 ]
 
 allAgencies = 'All Agencies'
