@@ -203,7 +203,7 @@ FROM datacenters
 WHERE LOWER(closingStage) = 'not closing'
 AND LOWER(ownershipType) = 'agency owned'
 AND LOWER(tier) IN ('tier 1', 'tier 2', 'tier 3', 'tier 4')
-AND optimizationExempt != 1
+AND (optimizationExempt != 1 OR optimizationExempt IS NULL)
 GROUP BY agency, year, quarter, tier
 ORDER BY agency, year, quarter, tier
 ''')
