@@ -2,9 +2,8 @@
  * Visualizations for DCOI data.
  *
  * TODO:
- *   - Check close/open/kmf data for NaN & missing data. (E.g. USDA, SSA)
- *   - Fix availability
- *   - Handle hash url for agency.
+ *   - Fix summary savings to use cumulative total.
+ *   - Check Labor's savings totals.
  */
 
 var allData;
