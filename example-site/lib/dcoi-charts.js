@@ -1,9 +1,5 @@
 /**
  * Visualizations for DCOI data.
- *
- * TODO:
- *   - Fix summary savings to use cumulative total.
- *   - Check Labor's savings totals.
  */
 
 var allData;
@@ -337,6 +333,17 @@ function buildTable (config) {
   })
   table += '</tr></thead><tbody>';
 
+  let fn = localizeValue;
+  if(config.options.tooltips &&
+    config.options.tooltips.callbacks &&
+    config.options.tooltips.callbacks.label) {
+    fn = function(value) {
+      return config.options.tooltips.callbacks.label({
+        value: value
+      });
+    };
+  }
+
   let columnCount = 0;
   datasets.forEach(function (set, i) {
     let label = set.label || '';
@@ -344,7 +351,7 @@ function buildTable (config) {
     table += '<tr>';
     table += '<th>' + label + '</th>';
     datasets[i].data.forEach(function(datum, j) {
-      datum = localizeValue(datum || 0, label);
+      datum = fn(datum || 0, label);
       table += '<td>' + datum + '</td>';
     });
     table += '</tr>';
@@ -781,14 +788,17 @@ function showSavings(data, agency) {
   }
 
   $.each(timeperiods, function(i, timeperiod) {
-    plannedData['data'].push( Math.round(data[agency]['plan']['savings'][timeperiod]['Planned']) );
-    achievedData['data'].push( Math.round(data[agency]['plan']['savings'][timeperiod]['Achieved']) );
+    plannedData['data'].push( data[agency]['plan']['savings'][timeperiod]['Planned'] );
+    achievedData['data'].push( data[agency]['plan']['savings'][timeperiod]['Achieved'] );
 
     let value = 0;
     if(i > 0) {
       value = totalData['data'][i-1];
     }
-    totalData['data'].push(value + achievedData['data'][i]);
+    if(achievedData['data'][i]) {
+      value += achievedData['data'][i];
+    }
+    totalData['data'].push(value);
   });
 
   savingsData = {
@@ -798,6 +808,13 @@ function showSavings(data, agency) {
       datasets: [plannedData, achievedData, totalData]
     },
     options: {
+      tooltips: {
+        callbacks: {
+          label: function (obj) {
+            return obj.value;
+          }
+        }
+      },
       scales: {
         yAxes: [{
           stacked: false
