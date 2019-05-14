@@ -449,10 +449,10 @@ function showSummaryTable(data) {
               data['metrics']['plannedAvailability'][mostRecent]['total'] -
               data['metrics']['downtime'][mostRecent]['total']
             ) / data['metrics']['plannedAvailability'][mostRecent]['total'] * 100
-          ).toFixed(4)
+          ).toFixed(4)+'%'
         }
         else {
-          percent = 100;
+          percent = '100%';
         }
       }
       row += td(percent);
