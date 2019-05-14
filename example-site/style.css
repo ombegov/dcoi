@@ -1,3 +1,10 @@
+.agency-select {
+  display: inline-block;
+  border: 1px solid #666;
+  border-radius: 5px;
+  padding: 1rem;
+}
+
 .charts {
   display: flex;
   flex-wrap: wrap;
@@ -6,9 +13,10 @@
 }
 
 .chart {
-  flex-basis: 500px;
-  max-width: 500px;
-  flex-shrink: 0;
+/*  flex-basis: 0;
+  min-width: 500px;
+  flex-shrink: 0;*/
+  flex: 0 0 500px;
   margin-right: 15px;
   margin-bottom: 15px;
   padding: 10px;
@@ -17,6 +25,7 @@
 
 .chart :last-child {
   padding-bottom: 0;
+  margin-bottom: 0;
 }
 
 .chart h3 {
@@ -36,8 +45,8 @@
 
 }
 
-.chart .table-holder th,
-.chart .table-holder td {
+.table th,
+.table td {
   font-size: 0.85rem;
   text-align: center;
   border-right: 1px solid #aaaaaa;
@@ -47,4 +56,32 @@
 
 .chart .table-holder tbody tr:nth-of-type(2n+1) {
   background-color: #eeeeee;
+}
+
+.goals {
+  list-style: none;
+  padding-left: 0;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.goals li {
+  font-size: 0.85rem;
+  text-align: left;
+  margin-right: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.goals label {
+  font-weight: bold;
+}
+.goals label:after {
+  content: ':';
+}
+
+.summary-table {
+  margin-top: -2rem;
+}
+
+.summary-table .highlight {
+  background-color: #fff3cd;
 }
