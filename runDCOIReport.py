@@ -265,10 +265,8 @@ for row in c.fetchall():
       deepadd(data, row['agency'], 'plan', fieldname, year, status, value)
       deepadd(data, allAgencies, 'plan', fieldname, year, status, value)
 
-# Availability is the only one that is an average, not a sum.
-for year, obj in data[allAgencies]['plan']['availability'].items():
-  data[allAgencies]['plan']['availability'][year]['Planned'] = data[allAgencies]['plan']['availability'][year]['Planned'] / len(agencies)
-  data[allAgencies]['plan']['availability'][year]['Achieved'] = data[allAgencies]['plan']['availability'][year]['Achieved'] / len(agencies)
+# Availability for all agencies doesn't make sense, since it's a percentage.
+del data[allAgencies]['plan']['availability']
 
 print( jsonCleanup(json.dumps(data)) )
 # TODO: Maybe export a file instead of just printing?
