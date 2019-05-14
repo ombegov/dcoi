@@ -811,7 +811,7 @@ function showSavings(data, agency) {
       tooltips: {
         callbacks: {
           label: function (obj) {
-            return obj.value;
+            return obj.value.toFixed(2);
           }
         }
       },
