@@ -1098,11 +1098,11 @@ function showIndustryAvailability(data, agency) {
     let value = data[agency]['metrics']['availability'][mostRecent][tier];
 
     achievedData['data'].push(
-      data[agency]['metrics']['availability'][mostRecent]['total']
+      data[agency]['metrics']['availability'][mostRecent][tier]
     );
 
     totalData['data'].push(
-      data[agency]['metrics']['count'][mostRecent]['total']
+      data[agency]['metrics']['count'][mostRecent][tier]
     );
 
     labels.push([tier, '(' + tierAvailability[tier] + '%)']);
