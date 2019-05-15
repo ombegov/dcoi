@@ -1,8 +1,13 @@
 /**
  * Visualizations for DCOI data.
+ *
+ * TODO:
+ *  * Fix KMFs for GSA (N/A instead of 0)
  */
 
 var allData;
+var allTimeperiods;
+var allMostRecent;
 
 const colors = {
   'green': '#28a745',
@@ -151,6 +156,9 @@ $( document ).ready(function (){
   loadApp();
   $.getJSON('./data.json', function(data) {
     allData = data;
+    allTimeperiods = Object.keys(data[allAgencies]['datacenters']['closed']).sort();
+    allMostRecent = allTimeperiods[ allTimeperiods.length - 1 ];
+
     setAgencies(Object.keys(data));
     showSummaryTable(data);
     showData(data, currentAgency);
@@ -174,23 +182,27 @@ function loadApp() {
       <h3>Closures Over Time – Tiered Only</h3>\
       <div class="chart-holder"></div>\
       <div class="table-holder"></div>\
+      <p class="message"></p>\
       <p>Definitions changed and Key Mission Facilities (KMFs) were added in Q4 2018.</p>\
     </div>\
     <div id="count-all" class="chart">\
       <h3>Closures Over Time – All Facilities</h3>\
       <div class="chart-holder"></div>\
       <div class="table-holder"></div>\
+      <p class="message"></p>\
       <p>Definitions changed and Key Mission Facilities (KMFs) were added in Q4 2018.</p>\
     </div>\
     <div id="tier" class="chart">\
       <h3>Count by Tier – Most Recent Quarter</h3>\
       <div class="chart-holder"></div>\
       <div class="table-holder"></div>\
+      <p class="message"></p>\
     </div>\
     <div id="kmfs" class="chart">\
       <h3>Key Misson Facilities by Type (Most Recent Quarter)</h3>\
       <div class="chart-holder"></div>\
       <div class="table-holder"></div>\
+      <p class="message"></p>\
     </div>\
     <div id="savings" class="chart">\
       <h3>Cost Savings &amp; Avoidance by Year</h3>\
@@ -203,12 +215,14 @@ function loadApp() {
   <div id="optimization">\
     <h2>Optimization Metrics</h2>\
     <p>Note: Optimization metrics are only calculated for tiered data centers designed for such improvements. Exemptions are granted by permission of OMB.</p>\
+    <p class="message"></p>\
   </div>\
-  <div class="charts">\
+  <div class="charts" id="optimization-charts">\
     <div id="virtualization" class="chart">\
       <h3>Virtualization</h3>\
       <div class="chart-holder"></div>\
       <div class="table-holder"></div>\
+      <p class="message"></p>\
       <p>\
         Definitions for virtualization changed in Q4 2018. Server count is inclusive of any virtual hosts.\
       </p>\
@@ -226,12 +240,14 @@ function loadApp() {
       <h3>Energy Metering</h3>\
       <div class="chart-holder"></div>\
       <div class="table-holder"></div>\
+      <p class="message"></p>\
       <p>Definitions for energy meterting changed in Q4 2018.</p>\
     </div>\
     <div id="utilization" class="chart">\
       <h3>Underutilized Servers</h3>\
       <div class="chart-holder"></div>\
       <div class="table-holder"></div>\
+      <p class="message"></p>\
       <p>\
         Underutilized Servers have only been reported since Q4 2018. Partial data may only be available for this metric.\
       </p>\
@@ -244,7 +260,7 @@ function displayMessage(id, message) {
   let elm = $('#'+id)
   elm.find('.chart-holder').empty();
   elm.find('.table-holder').empty()
-    .append('<p>'+message+'</p>');
+  elm.find('.message').empty().text(message);
 }
 
 function chartWrap(id, chartOptions) {
@@ -516,11 +532,35 @@ function showData(data, agency) {
   showClosures(data, agency);
   showKMFTypes(data, agency);
   showSavings(data, agency);
-  showVirtualization(data, agency);
-  showAvailability(data, agency);
-  showIndustryAvailability(data, agency);
-  showMetering(data, agency);
-  showUnderutilizedServers(data, agency);
+
+  let total = 0;
+  if(
+    typeof data[agency]['datacenters']['open'][allMostRecent] != 'undefined' &&
+    typeof data[agency]['datacenters']['open'][allMostRecent]['total'] != 'undefined'
+  ) {
+    total += data[agency]['datacenters']['open'][allMostRecent]['total'];
+  }
+  if(
+    typeof data[agency]['datacenters']['kmf'][allMostRecent] != 'undefined' &&
+    typeof data[agency]['datacenters']['kmf'][allMostRecent]['total'] != 'undefined'
+  ) {
+    total += data[agency]['datacenters']['kmf'][allMostRecent]['total'];
+  }
+
+  if(total == 0) {
+    $('#optimization .message').empty().text('This agency has no remaining open \
+      Tiered data centers, and is complete for all optimization purposes.');
+    $('#optimization-charts').hide();
+  }
+  else {
+    $('#optimization .message').empty();
+    $('#optimization-charts').show();
+
+    showVirtualization(data, agency);
+    showAvailability(data, agency);
+    showMetering(data, agency);
+    showUnderutilizedServers(data, agency);
+  }
 }
 
 
@@ -931,6 +971,11 @@ function showAvailability(data, agency) {
 
   let idx = timeperiods.indexOf(changeData);
 
+  if(idx < 0) {
+    displayMessage('availability', 'This agency does not have any Availability reported.');
+    return;
+  }
+
   let totalData = {
     // hidden: true,
     yAxisID: 'y-axis-left',
@@ -967,11 +1012,15 @@ function showAvailability(data, agency) {
   for(let i = idx; i < timeperiods.length; i++) {
     let timeperiod = timeperiods[i];
 
+    if(typeof data[agency]['metrics']['plannedAvailability'][timeperiod] == 'undefined') {
+      continue;
+    }
+
     totalData['data'].push(
       data[agency]['metrics']['plannedAvailability'][timeperiod]['total']
     );
     downtimeData['data'].push(
-      data[agency]['metrics']['downtime'][timeperiod]['total']
+      data[agency]['metrics']['downtime'][timeperiod]['total'] || 0
     );
 
     let percent = 0;
@@ -1156,6 +1205,11 @@ function showUnderutilizedServers(data, agency) {
   let timeperiods = Object.keys(data[agency]['metrics']['underutilizedServers']).sort();
 
   let idx = timeperiods.indexOf(changeData);
+
+  if(idx < 0) {
+    displayMessage('utilization', 'This agency does not have any underutilized servers reported.');
+    return;
+  }
 
   let achievedData = {
     yAxisID: 'y-axis-left',
