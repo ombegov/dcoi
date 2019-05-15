@@ -5,147 +5,159 @@ import sys
 import itertools
 import re
 import io
-import numpy as np
-import pandas as pd
-import pprint
-import os
-import warnings
-warnings.filterwarnings('ignore')
+
+# Remove the script from our arguments.
+arguments = sys.argv[1:]
+
+errorsOnly = False
+
+# Check for our flags, and strip from our arguments.
+i = 0
+while i < len(arguments):
+  if arguments[i] == '--errors-only':
+    errorsOnly = True
+    del arguments[i]
+  i += 1
+
+# Our remaining argument should be the filename.
 try:
-	filename = sys.argv[1]
+  filename = arguments[0]
 except IndexError:
-	print ('No filename specified!')
-	exit()
+  print ('No filename specified!')
+  exit()
 
 print ('Filename: ', filename)
 
 # Constant to define allowed values for a field
 VALID_VALUES = {
-	"Record Validity": ['Invalid Facility', 'Valid Facility'],
-	"Ownership Type": ['Agency Owned', 'Colocation', 'Outsourcing', 'Using Cloud Provider'],
-	"Inter-Agency Shared Services Position": ['Provider', 'Tenant', 'None'],
-	"Country": ['U.S.', 'Outside U.S.'],
-	"Data Center Tier": ['Non-Tiered', 'Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Unknown', 'Using Cloud Provider'],
-	"Key Mission Facility": ['Yes', 'No'],
-	"Key Mission Facility Type": ['Mission', 'Processing', 'Control', 'Location', 'Legal', 'Other'],
-	"Electricity Is Metered": ['Yes', 'No'],
-	"Closing Fiscal Year": [str(i) for i in range(2010, 2022)], # 2010 - 2021
-	"Closing Quarter": ['Q1', 'Q2', 'Q3', 'Q4'],
-	"Closing Stage": ['Closed', 'Migration Execution', 'Not closing'],
+  "Record Validity": ['Invalid Facility', 'Valid Facility'],
+  "Ownership Type": ['Agency Owned', 'Colocation', 'Outsourcing', 'Using Cloud Provider'],
+  "Inter-Agency Shared Services Position": ['Provider', 'Tenant', 'None'],
+  "Country": ['U.S.', 'Outside U.S.'],
+  "Data Center Tier": ['Non-Tiered', 'Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Unknown', 'Using Cloud Provider'],
+  "Key Mission Facility": ['Yes', 'No'],
+  "Key Mission Facility Type": ['Mission', 'Processing', 'Control', 'Location', 'Legal', 'Other'],
+  "Electricity Is Metered": ['Yes', 'No'],
+  "Closing Fiscal Year": [str(i) for i in range(2010, 2022)], # 2010 - 2021
+  "Closing Quarter": ['Q1', 'Q2', 'Q3', 'Q4'],
+  "Closing Stage": ['Closed', 'Migration Execution', 'Not closing'],
 }
+
+VALID_TIERS = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4']
 
 # Constant to define functions to check field value format
 VALID_FUNCTIONS = {
-	'Gross Floor Area': ['is_integer', 'greater_0'],
-	'Avg Electricity Usage': ['is_decimal', 'greater_0'],
-	'Avg IT Electricity Usage': ['is_decimal', 'greater_0'],
-	'Underutilized Servers': ['is_integer', 'equal_greater_0'],
-	'Actual Hours of Facility Downtime': ['is_integer', 'equal_greater_0'],
-	'Planned Hours of Facility Availability': ['is_integer', 'equal_greater_0'],
-	'Rack Count': ['is_integer', 'equal_greater_0'],
-	'Total Mainframes':['is_integer', 'equal_greater_0'],
-	'Total HPC Cluster Nodes': ['is_integer', 'equal_greater_0'],
-	'Total Virtual Hosts': ['is_integer', 'equal_greater_0'],
+  'Gross Floor Area': ['is_integer', 'greater_0'],
+  'Avg Electricity Usage': ['is_decimal', 'greater_0'],
+  'Avg IT Electricity Usage': ['is_decimal', 'greater_0'],
+  'Underutilized Servers': ['is_integer', 'equal_greater_0'],
+  'Actual Hours of Facility Downtime': ['is_integer', 'equal_greater_0'],
+  'Planned Hours of Facility Availability': ['is_integer', 'equal_greater_0'],
+  'Rack Count': ['is_integer', 'equal_greater_0'],
+  'Total Mainframes' : ['is_integer', 'equal_greater_0'],
+  'Total HPC Cluster Nodes': ['is_integer', 'equal_greater_0'],
+  'Total Virtual Hosts': ['is_integer', 'equal_greater_0'],
 }
 
 # Variables we will re-use
 
 hasErrors = False
 hasWarnings = False
+hasValidFacilities = False
+
+allRecordWarnings = {
+  'underutilized servers': 'No facilities were listed having underutilized servers. Please verify this information.',
+  'facility downtime': 'No facilities were listed with any downtime. Please verify this information.',
+  'key mission facilities': 'No key mission facilities were listed. Please verify this information.'
+}
 
 # Lowercase the field keys by updating the header row, for maximum compatiblity.
 def lower_headings(iterator):
-		return itertools.chain([next(iterator).lower()], iterator)
+    return itertools.chain([next(iterator).lower()], iterator)
 
 # must be an integer, e.g. "10", "-7"
 def is_integer(value):
-	try:
-		int(value)
-	except ValueError:
-		return "must be an integer value"
+  try:
+    int(value)
+  except ValueError:
+    return "must be an integer value"
 
 # must be a float, e.g. "10", "-7.6"
 def is_decimal(value):
-	try:
-		float(value)
-	except ValueError:
-		return "must be an float value"
+  try:
+    float(value)
+  except ValueError:
+    return "must be an float value"
 
 # must be greater than 0, e.g. "0.1", "5"
 def greater_0(value):
-	try:
-		assert float(value) > 0
-	except ValueError:
-		return "must be greater than 0"
-	except AssertionError:
-		return "must be greater than 0"
+  try:
+    assert float(value) > 0
+  except ValueError:
+    return "must be greater than 0"
+  except AssertionError:
+    return "must be greater than 0"
 
 # must be equal or greater than 0, e.g. "0", "0.0", "10"
 def equal_greater_0(value):
-	try:
-		assert float(value) >= 0
-	except ValueError:
-		return "must be greater than or equal to 0"
-	except AssertionError:
-		return "must be greater than or equal to 0"
+  try:
+    assert float(value) >= 0
+  except ValueError:
+    return "must be greater than or equal to 0"
+  except AssertionError:
+    return "must be greater than or equal to 0"
 
 # check field to against its valid_values/_functions
 def validate_values(data, field, msg=''):
-	errors = []
-	value = data.get(field.lower(), '')
+  errors = []
+  value = data.get(field.lower(), '')
 
-	# this function is not responsible to blank check
-	if not value:
-		return []
+  # this function is not responsible to blank check
+  if not value:
+    return []
 
-	# check against a list of values first
-	if VALID_VALUES.get(field):
-		values = VALID_VALUES.get(field)
-		if value.lower() not in map(str.lower, values):
-			msg = msg or 'If not blank, {} value must be one of "{}"; "{}" is given.'.format(field, '", "'.join(values), value)
-			errors.append(msg)
-	# then check with a list of functions
-	elif VALID_FUNCTIONS.get(field):
-		funcs = VALID_FUNCTIONS.get(field)
-		errs = []
-		for func in funcs:
-			if not func:
-				continue
-			elif not isinstance(func, str):
-				print('Provide a function name in function list for field "{}". {} is given.'.format(field, type(func)))
-				exit()
+  # check against a list of values first
+  if VALID_VALUES.get(field):
+    values = VALID_VALUES.get(field)
+    if value.lower() not in map(str.lower, values):
+      msg = msg or 'If not blank, {} value must be one of "{}"; "{}" is given.'.format(field, '", "'.join(values), value)
+      errors.append(msg)
+  # then check with a list of functions
+  elif VALID_FUNCTIONS.get(field):
+    funcs = VALID_FUNCTIONS.get(field)
+    errs = []
+    for func in funcs:
+      if not func:
+        continue
+      elif not isinstance(func, str):
+        print('Provide a function name in function list for field "{}". {} is given.'.format(field, type(func)))
+        exit()
 
-			try:
-				errs.append(eval(func)(value))
-			except NameError:
-				print('Function "{}" is not defined for field "{}".'.format(func, field))
-				exit()
+      try:
+        errs.append(eval(func)(value))
+      except NameError:
+        print('Function "{}" is not defined for field "{}".'.format(func, field))
 
-		# remove empty ones
-		errs = [x for x in errs if x]
+        exit()
+    # remove empty ones
+    errs = [x for x in errs if x]
 
-		if errs:
-			msg = msg or field + ' ' + ', '.join(errs) + '. "' + value + '" is given.'
-			errors.append(msg)
+    if errs:
+      msg = msg or field + ' ' + ', '.join(errs) + '. "' + value + '" is given.'
+      errors.append(msg)
 
-	return errors
+  return errors
 
 # Check field for required
-def validate_required(data, field, specials, msg=''):
-	errors = []
-	# check required implies check valid values first
-	errors.extend(validate_values(data, field, msg))
+def validate_required(data, field, msg=''):
+  errors = []
+  # check required implies check valid values first
+  errors.extend(validate_values(data, field, msg))
 
-	if errors:
-		# if error from validate_values(), it means it HAS some value
-		# so we skip blank check.
-		pass
-	if specials and field not in specials:
-		pass
-	elif not data.get(field.lower()):
-		errors.append(msg or '{} must not be blank.'.format(field))
+  if len(errors) == 0 and not data.get(field.lower()):
+    errors.append(msg or '{} must not be blank.'.format(field))
 
-	return errors
+  return errors
 
 # Main function starts
 with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
@@ -237,7 +249,7 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
       errors.extend(validate_values(row, 'Closing Fiscal Year'))
       errors.extend(validate_values(row, 'Closing Quarter'))
 
-    if row.get('planned hours of facility availability') and int(row.get('planned hours of facility availability')) == 0:
+    if row.get('planned hours of facility availability') and int(float(row.get('planned hours of facility availability'))) == 0:
       errors.append('Planned Hours of Facility Availability must be greater than 0.')
 
     ###
@@ -290,7 +302,7 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
     # Total Servers vs Total Virtual Hosts
     #
     if (row.get('total servers') and row.get('total virtual hosts') and row.get('total mainframes') and
-      int(row.get('total virtual hosts')) > (int(row.get('total servers')) + int(row.get('total mainframes')))
+      int(float(row.get('total virtual hosts'))) > (int(float(row.get('total servers'))) + int(float(row.get('total mainframes'))))
     ):
       warnings.append('Total Virtual Hosts should not be greater than Total Servers plus Total Mainframes. Total Virtual Hosts represents the physical servers or mainframes dedicated to providing a virtualization layer to guest operating systems. These should be also included in the Total counts. Total Virtual Hosts is not a count of the guest operating systems (Total Virtual OS in previous collections).')
 
@@ -298,12 +310,12 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
     #
     if applicable:
       # Downtime
-      if row.get('actual hours of facility downtime') and int(row.get('actual hours of facility downtime')) > 0:
+      if row.get('actual hours of facility downtime') and int(float(row.get('actual hours of facility downtime'))) > 0:
         if 'facility downtime' in allRecordWarnings:
           del allRecordWarnings['facility downtime']
 
       # Underutilized Servers
-      if row.get('underutilized servers') and int(row.get('underutilized servers')) > 0:
+      if row.get('underutilized servers') and int(float(row.get('underutilized servers'))) > 0:
         if 'underutilized servers' in allRecordWarnings:
           del allRecordWarnings['underutilized servers']
 
