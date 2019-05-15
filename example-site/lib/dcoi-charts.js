@@ -222,17 +222,6 @@ function loadApp() {
         Availability has only been reported since Q4 2018. Partial data may only be available for this metric.\
       </p>\
     </div>\
-    <div id="industryAvailability" class="chart">\
-      <h3>Availability by Tier – Most Recent Quarter</h3>\
-      <div class="chart-holder"></div>\
-      <div class="table-holder"></div>\
-      <p>\
-        Number of facilities meeting industry-standard availability (in parentheses) for their tier.\
-      </p>\
-      <p>\
-        Availability has only been reported since Q4 2018. Partial data may only be available for this metric.\
-      </p>\
-    </div>\
     <div id="energyMetering" class="chart">\
       <h3>Energy Metering</h3>\
       <div class="chart-holder"></div>\
@@ -1055,94 +1044,6 @@ function showAvailability(data, agency) {
   }
 
   let availabilityChart = chartWrap('availability', availabilityData);
-}
-
-function showIndustryAvailability(data, agency) {
-  // We only have recent data for this element.
-  let timeperiods = Object.keys(data[agency]['metrics']['availability']).sort();
-  let mostRecent = timeperiods[ timeperiods.length - 1 ];
-
-  let idx = timeperiods.indexOf(changeData);
-
-  let tierAvailability = {
-    'Tier 1': 99.671,
-    'Tier 2': 99.749,
-    'Tier 3': 99.982,
-    'Tier 4': 99.995
-  };
-
-  let achievedData = {
-    yAxisID: 'y-axis-left',
-    label: 'Meet Availability',
-    borderColor: colors['green'],
-    backgroundColor: colors['green'],
-    fill: false,
-    pointRadius: 6,
-    lineTension: 0,
-    data: []
-  };
-  let totalData = {
-    // hidden: true,
-    yAxisID: 'y-axis-left',
-    label: 'Total Count',
-    borderColor: colors['blue'],
-    backgroundColor: colors['blue'],
-    fill: false,
-    pointRadius: 6,
-    lineTension: 0,
-    data: []
-  };
-  let labels = [];
-
-  tiers.forEach(function(tier) {
-    let value = data[agency]['metrics']['availability'][mostRecent][tier];
-
-    achievedData['data'].push(
-      data[agency]['metrics']['availability'][mostRecent][tier]
-    );
-
-    totalData['data'].push(
-      data[agency]['metrics']['count'][mostRecent][tier]
-    );
-
-    labels.push([tier, '(' + tierAvailability[tier] + '%)']);
-  });
-
-  availabilityData = {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [achievedData, totalData]
-    },
-    options: {
-      tooltips: {
-        callbacks: {
-          title: function(obj) {
-            return obj[0].xLabel[0];
-          }
-        }
-      },
-      scales: {
-        yAxes: [
-        {
-          id: 'y-axis-left',
-          position: 'left',
-          stepSize: 1,
-          stacked: false
-        }
-        ],
-        xAxes: [{
-          stacked: true,
-          scaleLabel: {
-            display: true
-          }
-        }]
-      }
-    }
-  };
-
-
-  let availabilityChart = chartWrap('industryAvailability', availabilityData);
 }
 
 function showMetering(data, agency) {
