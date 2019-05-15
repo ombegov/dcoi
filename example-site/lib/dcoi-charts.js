@@ -404,9 +404,22 @@ function showSummaryTable(data) {
   table += '</tbody></table>';
 
   $('#summary-table').append(table);
+
+  // DataTable configuration
+  var numbersType = $.fn.dataTable.absoluteOrderNumber( [
+    { value: '-', position: 'bottom' }
+  ] );
+
   $('#summary-table table').DataTable({
      paging: false,
-     info: false
+     info: false,
+     columnDefs: [
+       {
+         orderSequence: [ "desc", "asc" ],
+         type: numbersType,
+         targets: [1,2,3,4,5,6]
+       }
+     ]
   });
 
   function tr(agency, data) {
@@ -452,7 +465,7 @@ function showSummaryTable(data) {
           ).toFixed(4)+'%'
         }
         else {
-          percent = '100%';
+          percent = '100.0000%';
         }
       }
       row += td(percent);
