@@ -12,6 +12,33 @@
   justify-content: space-evenly;
 }
 
+@media print {
+  .charts {
+    display: block;
+  }
+
+  .agency-select {
+    display: none;
+  }
+
+  .chart {
+    flex: none;
+    page-break-inside: avoid;
+  }
+
+  h2 {
+    margin-bottom: 2rem;
+  }
+
+  .summary-table {
+    margin-top: 0;
+  }
+
+  .dataTables_filter {
+    display: none;
+  }
+}
+
 .chart {
 /*  flex-basis: 0;
   min-width: 500px;
