@@ -10,6 +10,10 @@ import time
 import sys
 # Our JSON might not be... pristine, so we must use a more flexible module.
 from barely_json import parse
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+# Stop yelling about the insecure requests.
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 import config
 
@@ -29,7 +33,7 @@ agencies = {
   "DHS": "http://www.dhs.gov",
   "DOD": "http://www.defense.gov",
   "DOT": "https://www.transportation.gov",
-  "ED": "http://www.ed.gov",
+  "ED": "https://www2.ed.gov",
   "Energy": "http://www.energy.gov",
   "EPA": "http://www.epa.gov",
   "GSA": "http://www.gsa.gov",
@@ -76,6 +80,7 @@ fields = [
   'fy20Planned',
   'fy20Achieved',
   'explanation',
+  'methodology',
   'costsOfClosures',
   'costsOfOptimization',
   'historicalCostSavings'
@@ -94,7 +99,8 @@ for agency in agencies:
 
   try:
     # Give at least ten seconds for slower agencies to respond
-    r = requests.get(planFile, timeout=10, headers=headers)
+    # Don't verify the certificate since agencies stuggle with SSL.
+    r = requests.get(planFile, timeout=10, headers=headers, verify=False)
   except:
     print('! Cannot download file. {}'.format(sys.exc_info()[0]))
     missingAgencies.append(agency)
@@ -102,10 +108,20 @@ for agency in agencies:
 
   if r.status_code == 200 and len(r.text):
     text = filter_nonprintable(r.text)
-    data = parse(text)
+    try:
+      data = parse(text)
+    except:
+      print('! Error in file.')
+      missingAgencies.append(agency)
+      continue
 
-    # print(data) # DEBUG
-    # TODO: Validate
+    if not 'closures' in data:
+      print('! Using old schema.')
+      missingAgencies.append(agency)
+      continue;
+
+    # Delete any previous plans.
+    conn.execute('DELETE FROM stratplans WHERE agency=:agency', {'agency': agency})
 
     # Insert into database.
 

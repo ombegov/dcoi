@@ -148,240 +148,244 @@ def validate_required(data, field, specials, msg=''):
 	return errors
 
 # Main function starts
-with io.open(filename, 'r', encoding='iso-8859-1') as datafile:
-	reader = csv.DictReader(lower_headings(datafile))
-	# added 'data center id' header as it was corrupted during recode/encode for some reason
-	reader.fieldnames=['data center id', 'agency abbreviation', 'component', 'record validity', 'data center name',
-						'published name', 'ownership type', 'inter-agency shared services position',
-						'data center tier', 'country', 'gross floor area', 'key mission facility', 'key mission facility type',
-						'optimization exempt', 'electricity is metered', 'avg electricity usage', 'avg it electricity usage',
-						'underutilized servers', 'actual hours of facility downtime', 'planned hours of facility availability',
-						'rack count', 'total mainframes', 'total hpc cluster nodes', 'total server count', 'total virtual hosts',
-						'closing stage', 'closing fiscal year', 'closing quarter', 'comments', 'omb comments']
-	stats = {
-		'record_total': 0,
-		'record_error': 0,
-		'record_warning': 0,
-		'error': 0,
-		'warning': 0
-	}
+with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
+  reader = csv.DictReader(lower_headings(datafile))
+  stats = {
+    'record_total': 0,
+    'record_error': 0,
+    'record_warning': 0,
+    'error': 0,
+    'warning': 0
+  }
+  for row in reader:
+    num = reader.line_num
+    errors = []
+    warnings = []
+    applicable = False
 
-	#i nitiate a dictionary to store all information from the looping process
-	agency_dict={}
+    ###
+    # Data acceptance rules. These should match the IDC instructions.
+    ###
 
-	for row in reader:
-		num = reader.line_num
-		errors = []
-		warnings = []
-		
-		#if num==1:
-		#	#next(row,None)
-		#	continue
-		#else:
-		#	pass
+    ###
+    # Required fields.
+    ###
+    required_fields = ['agency abbreviation', 'component', 'record validity', #'data center name',
+      'ownership type', 'gross floor area', 'data center tier', 'key mission facility', 'electricity is metered',
+      'underutilized servers', 'actual hours of facility downtime', 'planned hours of facility availability',
+      'rack count', 'total servers', 'total mainframes', 'total hpc cluster nodes', 'total virtual hosts', 'closing stage'
+    ]
+    if row.get('record validity', '').lower() == 'invalid facility':
+      required_fields = ['agency abbreviation', 'component', 'record validity']
 
-		###
-		# Special conditions for required fields.
-		###
-		specials = []
-		if row.get('record validity', '').lower() == 'invalid facility':
-			specials = ['agency abbreviation', 'component', 'data center id', 'record validity']
+    elif row.get('ownership type', '').lower() != 'agency owned':
+      required_fields = ['agency abbreviation', 'component', 'record validity', 'closing stage']
 
-		elif row.get('ownership type', '').lower() != 'agency owned':
-			specials = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage']
+    elif row.get('inter-agency shared services position', '').lower() == 'tenant':
+      required_fields = ['agency abbreviation', 'component', 'record validity', 'closing stage', 'ownership type']
 
-		elif row.get('inter-agency shared services position', '').lower() == 'tenant':
-			specials = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage', 'ownership type']
+    elif row.get('key mission facility', '').lower() == 'yes':
+      required_fields = ['agency abbreviation', 'component', 'record validity', 'closing stage', 'ownership type', 'key mission facility type']
+      applicable = True
+      hasValidFacilities = True
 
-		elif row.get('key mission facility', '').lower() == 'yes':
-			specials = ['agency abbreviation', 'component', 'data center id', 'record validity', 'closing stage', 'ownership type', 'key mission facility type']
+    elif row.get('closing stage', '').lower() == 'closed':
+      required_fields = ['agency abbreviation', 'component', 'record validity', 'ownership type', 'gross floor area', 'data center tier', 'closing stage']
+    else:
+      applicable = True
+      hasValidFacilities = True
 
-		###
-		# Data acceptance rules. These should match the IDC instructions.
-		###
+    for required_field in required_fields:
+      errors.extend(validate_required(row, required_field))
 
-		# Common required checks
-		#
-		for required_field in ['Agency Abbreviation', 'Component', 'Data Center Name', 'Record Validity',
-				'Ownership Type', 'Gross Floor Area', 'Data Center Tier', 'Key Mission Facility', 'Electricity Is Metered',
-				'Underutilized Servers', 'Actual Hours of Facility Downtime', 'Planned Hours of Facility Availability',
-				'Rack Count', 'Total Mainframes', 'Total HPC Cluster Nodes', 'Total Virtual Hosts', 'Closing Stage',
-		]:
-			errors.extend(validate_required(row, required_field, specials))
+    ###
+    # If we don't have a valid data center, don't check any more errors.
+    ###
+    if not applicable:
+      continue
 
-		# Common optional value checks
-		#
-		errors.extend(validate_values(row, 'Country'))
+    # Common optional value checks
+    #
+    errors.extend(validate_values(row, 'Country'))
 
-		# Other checks
-		#
-		if row.get('data center id') and not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
-				errors.append('Data Center ID must be DCOI-DC-#####. Or leave blank for new data centers.')
+    # Other checks
+    #
+    if row.get('data center id') and not (re.match(r"DCOI-DC-\d+$", row.get('data center id'))):
+        errors.append('Data Center ID must be DCOI-DC-##### or leave blank for new data centers.')
 
-		if row.get('record validity', '').lower() == 'invalid facility' and row.get('closing stage').lower() == 'closed':
-				errors.append('Record Validity cannot be "Invalid Facility" if Closing Stage is "Closed".')
+    if row.get('ownership type', '').lower() == 'Using Cloud Provider'.lower() and row.get('data center tier', '').lower() != 'Using Cloud Provider'.lower():
+        errors.append('Data Center Tier must be "Using Cloud Provider" if Ownership Type is "Using Cloud Provider".')
 
-		if row.get('ownership type', '').lower() == 'Using Cloud Provider'.lower() and row.get('data center tier', '').lower() != 'Using Cloud Provider'.lower():
-				errors.append('Data Center Tier must be "Using Cloud Provider" if Ownership Type is "Using Cloud Provider".')
+    if row.get('ownership type', '').lower() == 'Colocation'.lower():
+      msg = 'Inter-Agency Shared Services Position must not be blank if Ownership Type is "Colocation".'
+      errors.extend(validate_required(row, 'Inter-Agency Shared Services Position', msg))
+    else:
+      errors.extend(validate_values(row, 'Inter-Agency Shared Services Position'))
 
-		if row.get('ownership type', '').lower() == 'Colocation'.lower():
-			msg = 'Inter-Agency Shared Services Position must not be blank if Ownership Type is "Colocation".'
-			errors.extend(validate_required(row, 'Inter-Agency Shared Services Position', specials, msg))
-		else:
-			errors.extend(validate_values(row, 'Inter-Agency Shared Services Position'))
+    if row.get('key mission facility', '').lower() == 'yes':
+      msg = 'Key Mission Facilities must have a Key Mission Facility Type.'
+      errors.extend(validate_required(row, 'Key Mission Facility Type', msg))
+    else:
+      errors.extend(validate_values(row, 'Key Mission Facility Type'))
 
-		if row.get('key mission facility', '').lower() == 'yes':
-			msg = 'Key Mission Facilities must have a Key Mission Facility Type.'
-			errors.extend(validate_required(row, 'Key Mission Facility Type', specials, msg))
-		else:
-			errors.extend(validate_values(row, 'Key Mission Facility Type'))
+    if row.get('closing stage', '').lower() in ['closed', 'migration execution']:
+      msg = 'Closing Fiscal Year must not be blank if Closing Stage is "Closed" or "Migration Execution".'
+      errors.extend(validate_required(row, 'Closing Fiscal Year', msg))
+      msg = 'Closing Quarter must not be blank if Closing Stage is "Closed" or "Migration Execution".'
+      errors.extend(validate_required(row, 'Closing Quarter', msg))
+    else:
+      errors.extend(validate_values(row, 'Closing Fiscal Year'))
+      errors.extend(validate_values(row, 'Closing Quarter'))
 
-		if row.get('electricity is metered', '').lower() == 'yes':
-			msg = 'Avg Electricity Usage must not be blank if Electricity is Metered.'
-			errors.extend(validate_required(row, 'Avg Electricity Usage', specials, msg))
-			msg = 'Avg IT Electricity Usage must not be blank if Electricity is Metered.'
-			errors.extend(validate_required(row, 'Avg IT Electricity Usage', specials, msg))
-		else:
-			errors.extend(validate_values(row, 'Avg Electricity Usage'))
-			errors.extend(validate_values(row, 'Avg IT Electricity Usage'))
+    if row.get('planned hours of facility availability') and int(row.get('planned hours of facility availability')) == 0:
+      errors.append('Planned Hours of Facility Availability must be greater than 0.')
 
-		# test the string is decimal then compare the value
-		if row.get('avg electricity usage', '').replace('.','',1).isdigit() and row.get('avg it electricity usage', '').replace('.','',1).isdigit():
-			if float(row.get('avg electricity usage')) < float(row.get('avg it electricity usage')):
-				errors.append('Avg IT Electricity Usage must be less than or equal to Avg Electricity Usage.')
+    ###
+    # Data validation rules. This should catch any bad data.
+    ###
 
-		if row.get('closing stage', '').lower() != 'not closing':
-			msg = 'Closing Fiscal Year must not be blank if Closing Stage is not "Not Closing".'
-			errors.extend(validate_required(row, 'Closing Fiscal Year', specials, msg))
-			msg = 'Closing Quarter must not be blank if Closing Stage is not "Not Closing".'
-			errors.extend(validate_required(row, 'Closing Quarter', specials, msg))
-		else:
-			errors.extend(validate_values(row, 'Closing Fiscal Year'))
-			errors.extend(validate_values(row, 'Closing Quarter'))
-
-		###
-		# Data validation rules. This should catch any bad data.
-		###
-
-		if (row.get('record validity', '').lower() == 'valid facility' and
-				row.get('closing stage', '').lower() != 'closed' and
-				row.get('ownership type', '').lower() == 'agency owned' and
-				row.get('data center tier', '').lower() not in map(str.lower, VALID_VALUES['Data Center Tier'])):
-			warnings.append('Only tiered data centers need to be reported, marked as "{}"'.format(row.get('data center tier')))
+    if (row.get('record validity', '').lower() == 'valid facility' and
+        row.get('closing stage', '').lower() != 'closed' and
+        row.get('ownership type', '').lower() == 'agency owned' and
+        row.get('data center tier', '').lower() not in map(str.lower, VALID_TIERS)):
+      warnings.append('Only tiered data centers need to be reported, marked as "{}"'.format(row.get('data center tier')))
 
 
-		# Impossible PUEs
+    # Impossible PUEs
 
-		# PUE = 1.0:
-		if (row.get('avg electricity usage') and
-				row.get('avg it electricity usage') and
-				row.get('avg electricity usage') == row.get('avg it electricity usage')):
+    # PUE = 1.0:
+    if (row.get('avg electricity usage') and
+        row.get('avg it electricity usage') and
+        row.get('avg electricity usage').replace('.','',1).isdigit() and
+        row.get('avg it electricity usage').replace('.','',1).isdigit() and
+        float(row.get('avg electricity usage')) <= float(row.get('avg it electricity usage'))):
+      warnings.append(
+        'Avg Electricity Usage ({}) for a facility should be greater than Avg IT Electricity Usage ({})'
+          .format(row.get('avg electricity usage'), row.get('avg it electricity usage'))
+      )
 
-			warnings.append(
-				'Avg Electricity Usage ({}) for a facility should never be equal to Avg IT Electricity Usage ({})'
-					.format(row.get('avg electricity usage'), row.get('avg it electricity usage'))
-			)
+    if row.get('electricity is metered', '').lower() == 'yes':
+      msg = 'Avg Electricity Usage should not be blank if Electricity is Metered.'
+      warnings.extend(validate_required(row, 'Avg Electricity Usage', msg))
+      msg = 'Avg IT Electricity Usage should not be blank if Electricity is Metered.'
+      warnings.extend(validate_required(row, 'Avg IT Electricity Usage', msg))
 
-		# If Electricity is Metered = "No" then Electricity Usage should be blank
-		if row.get('electricity is metered', '').lower() == 'no':
-			if row.get('avg electricity usage'):
-				warnings.append('Avg Electricity Usage should be blank if Electricity is not Metered.')
-			if row.get('avg it electricity usage'):
-				warnings.append('Avg IT Electricity Usage should be blank if Electricity is not Metered.')
+    # Check for incorrect KMF reporting
+    if row.get('key mission facility type') and row.get('key mission facility', '').lower() != 'yes':
+      warnings.append('Key Mission Facility Type should only be present if Key Mission Facility is "Yes"')
 
-		# Check for incorrect KMF reporting
-		if row.get('key mission facility type') and row.get('key mission facility', '').lower() != 'yes':
-			warnings.append('Key Mission Facility Type should only be present if Key Mission Facility is "Yes"')
+    if row.get('key mission facility', '').lower() == 'yes':
+      if row.get('data center tier', '').lower() not in map(str.lower, VALID_TIERS):
+        warnings.append('Key Mission Facilities should not be non-tiered data centers.')
 
-		if row.get('key mission facility', '').lower() == 'yes':
-			if row.get('data center tier', '').lower() not in map(str.lower, VALID_VALUES['Data Center Tier']):
-				warnings.append('Key Mission Facilities should not be non-tiered data centers.')
+      if row.get('ownership type', '').lower() != 'agency owned':
+        warnings.append('Key Mission Facilities should only be agency-owned.')
 
-			if row.get('ownership type', '').lower() != 'agency owned':
-				warnings.append('Key Mission Facilities should only be agency-owned.')
+      if row.get('record validity', '').lower() != 'valid facility':
+        warnings.append('Invalid facilities should not be Key Mission Facilities.')
 
-			if row.get('record validity', '').lower() != 'valid facility':
-				warnings.append('Invalid facilities should not be Key Mission Facilities.')
+      if row.get('closing stage', '').lower() != 'not closing':
+        warnings.append('Key Mission Facilities should be "Not Closing" for Closing Stage.')
 
-			if row.get('closing stage', '').lower() != 'closed':
-				warnings.append('Key Mission Facilities cannot be "Yes" if Closing Stage is "Closed".')
+    # Total Servers vs Total Virtual Hosts
+    #
+    if (row.get('total servers') and row.get('total virtual hosts') and row.get('total mainframes') and
+      int(row.get('total virtual hosts')) > (int(row.get('total servers')) + int(row.get('total mainframes')))
+    ):
+      warnings.append('Total Virtual Hosts should not be greater than Total Servers plus Total Mainframes. Total Virtual Hosts represents the physical servers or mainframes dedicated to providing a virtualization layer to guest operating systems. These should be also included in the Total counts. Total Virtual Hosts is not a count of the guest operating systems (Total Virtual OS in previous collections).')
 
-		###
-		# Print our results.
-		###
+    # Flags for all-records. Checks to see if agencies are generally following our guidance.
+    #
+    if applicable:
+      # Downtime
+      if row.get('actual hours of facility downtime') and int(row.get('actual hours of facility downtime')) > 0:
+        if 'facility downtime' in allRecordWarnings:
+          del allRecordWarnings['facility downtime']
 
-		if len(errors) or len(warnings):
-			# Print some sort of name to look up, even if we don't have one.
+      # Underutilized Servers
+      if row.get('underutilized servers') and int(row.get('underutilized servers')) > 0:
+        if 'underutilized servers' in allRecordWarnings:
+          del allRecordWarnings['underutilized servers']
 
-			if row.get('agency abbreviation'):
-				agency_abrv=row.get('agency abbreviation')
-			if row.get('component'):
-				agency_comp=row.get('component')
-			if row.get('data center id'):
-				dc_id=row.get('data center id')
-			else:
-				pass
+      # Key Mission Facilities
+      if row.get('key mission facility') and row.get('key mission facility').lower() == 'yes':
+        if 'key mission facilities' in allRecordWarnings:
+          del allRecordWarnings['key mission facilities']
 
-		if len(errors) > 0:
 
-			hasErrors = True
+    ###
+    # Print our results.
+    ###
 
-		if len(warnings) > 0:
-			hasWarnings = True
-			
-		# as the csv is being looped through the errors and warnings are being added to a dictionary
-		# if the dictionary key value exists, it appends the message.  If it does not the key/value pair is created
-		# this is editing agency_dict which was declared outside the for loop (line )
+    if len(errors) or (len(warnings) and not errorsOnly):
+      # Print some sort of name to look up, even if we don't have one.
+      dcName = []
 
-		if agency_abrv in agency_dict.keys():
-			if agency_comp in agency_dict[agency_abrv].keys():
-				if dc_id in agency_dict[agency_abrv][agency_comp].keys():
-					agency_dict[agency_abrv][agency_comp][dc_id]['errors'].extend(errors)
-					agency_dict[agency_abrv][agency_comp][dc_id]['warnings'].extend(warnings)
-				else:
-					agency_dict[agency_abrv][agency_comp][dc_id]={'warnings':warnings,'errors':errors}
-			else:
-				agency_dict[agency_abrv][agency_comp]={dc_id:{'warnings':warnings,'errors':errors}}
-		else:
-			agency_dict[agency_abrv]={agency_comp:{dc_id:{'warnings':warnings,'errors':errors}}}
+      if row.get('agency abbreviation'):
+        dcName.append(row.get('agency abbreviation'))
 
-# Dictionary comprehension takes agency_dcit and creates a single layer key/value pair
-# the key is a tuple of ageny_dict's four keys
-new_dict = {(k1,k2,k3,k4):v4 \
-			for k1,v1 in agency_dict.items()\
-			for k2,v2 in agency_dict[k1].items()\
-			for k3,v3 in agency_dict[k1][k2].items()\
-			for k4,v4 in agency_dict[k1][k2][k3].items()\
-			}
+      if row.get('component'):
+        dcName.append(row.get('component'))
 
-# create a multiindex pandas data frame from the tuple keys in new_dit
-df = pd.DataFrame([new_dict[i] for i in sorted(new_dict)],
-                  index=pd.MultiIndex.from_tuples([i for i in sorted(new_dict.keys())],names=['Agency','Component','DCID','Error Message']))
+      if row.get('data center id'):
+        dcName.append(row.get('data center id'))
 
-# this is a messy work around.  The csv.DictReader was reading the first line (headers) and applying the error logic to it
-# this resulted in two rows being added to the error message output and erroneous indexes in the dataframe
-# instead of creating a new iterator object and updating the row calls, I just filtered out the erroneous rows on the 'Agency"
-# index column 
-df = df.iloc[df.index.get_level_values('Agency') != 'agency abbreviation']
+      else:
+        dcName.append('Line Number {}'.format(num))
 
-# get the path the project is stored in
-path = os.getcwd()
-agency_files = os.path.join(path,'Agency_Folder')
-# find a unique list of values in the 'Agency' index column
-unique_agencies = list(set(df.index.get_level_values('Agency')))
+      print(' - '.join(dcName))
 
-# make directory
-if not(os.path.exists(agency_files)):
-	os.mkdir(agency_files)
-else:
-	pass
+    if len(errors) > 0:
+      hasErrors = True
+      print('  Errors:', "\n   ", "\n    ".join(errors))
 
-# iterate through unique_agencies, assigning each unique one to a dataframe, saving that to a folder in my directory as a csv
-for i in unique_agencies:	
+    if len(warnings) > 0 and not errorsOnly:
+      hasWarnings = True
+      print('  Warnings:', "\n   ", "\n    ".join(warnings))
 
-	new_df = df.iloc[df.index.get_level_values('Agency') == i]
+    stats['record_total'] += 1
+    stats['record_error'] += 1 if len(errors) else 0
+    stats['record_warning'] += 1 if len(warnings) else 0
+    stats['error'] += len(errors)
+    stats['warning'] += len(warnings)
 
-	# because of csv.DictReader applied the error message logic to the header row it created 19 empty columns in the data frame
-	new_df.dropna(inplace=True,axis=1,how='all')
+  ###
+  # Print our final validation results.
+  ###
 
-	new_df.to_csv(os.path.join(path,'Agency_Files/{} DCOI Validation.csv'.format(i)),index_label=['Agency','Component','DCID','Error Message'])
+  if len(allRecordWarnings):
+    print('')
+    print('General Warnings')
+    for warn in allRecordWarnings.values():
+      print('  ' + warn)
+
+  print('')
+  print('********************************************************************************')
+
+  print('* Total records in file: %d.' % stats['record_total'])
+
+  if hasErrors or hasWarnings:
+    print('*')
+    print('*', end=" ")
+    if hasErrors:
+      print('%d errors found in %d records.' % (stats['error'], stats['record_error']), end=" ")
+
+    if hasWarnings and not errorsOnly:
+      print('%d warnings found in %d records.' % (stats['warning'], stats['record_warning']))
+    else:
+      print('')
+
+    print('*')
+
+  if hasErrors:
+    print('* Any errors must be corrected before the data file will be accepted.')
+
+  if hasWarnings and not errorsOnly:
+    print('* The warnings above _should_ be corrected before submitting this data, but it ')
+    print('* is not required.')
+
+  if not hasErrors and not hasWarnings:
+    print('* The file had no problems or errors.')
+
+  print('********************************************************************************')
+  print('')

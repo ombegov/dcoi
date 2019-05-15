@@ -40,12 +40,11 @@ var requiredFields = {
     'agency abbreviation', 'component', 'record validity', /*'data center name',*/
     'ownership type', 'gross floor area', 'data center tier', 'key mission facility', 'electricity is metered',
     'underutilized servers', 'actual hours of facility downtime', 'planned hours of facility availability',
-    'rack count', 'total mainframes', 'total hpc cluster nodes', 'total virtual hosts', 'closing stage',
+    'rack count', 'total servers', 'total mainframes', 'total hpc cluster nodes', 'total virtual hosts', 'closing stage',
   ],
   closed: [
     'agency abbreviation', 'component', 'record validity', /*'data center name',*/
-    'ownership type', 'gross floor area', 'data center tier', 'rack count', 'total mainframes',
-    'total hpc cluster nodes', 'total virtual hosts', 'closing stage'
+    'ownership type', 'gross floor area', 'data center tier', 'closing stage'
   ],
   invalid: ['agency abbreviation', 'component', 'record validity'],
   otherOwner: ['agency abbreviation', 'component', 'record validity', 'closing stage'],
@@ -276,10 +275,18 @@ function checkErrors(data) {
   let minimumHours = (8 * 5 * 4 * 3) * 0.9; // 8 hours in a day * 5 days a week * 4 weeks a month * 3 months * 90% uptime
   if(
     isValid(data['planned hours of facility availability']) &&
-    data['planned hours of facility availability'] > 0 &&
-    data['planned hours of facility availability'] < minimumHours
+    parseInt(data['planned hours of facility availability']) > 0 &&
+    parseInt(data['planned hours of facility availability']) < minimumHours
    ) {
     results['warnings'].push('Planned Hours of Facility Availability for a quarter should usually be at least ' + minimumHours + '.');
+  }
+
+  // Total Servers vs Total Virtual Hosts
+  if(
+    isValid(data['total servers']) && isValid(data['total virtual hosts']) && isValid(data['total mainframes']) &&
+    parseInt(data['total virtual hosts']) > (parseInt(data['total servers']) + parseInt(data['total mainframes']))
+  ) {
+    results['warnings'].push('Total Virtual Hosts should not be greater than Total Servers plus Total Mainframes. Total Virtual Hosts represents the physical servers or mainframes dedicated to providing a virtualization layer to guest operating systems. These should be also included in the Total counts. Total Virtual Hosts is not a count of the guest operating systems (Total Virtual OS in previous collections).');
   }
 
   /*
