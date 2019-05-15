@@ -1,8 +1,6 @@
 /**
  * Visualizations for DCOI data.
  *
- * TODO:
- *  * Fix KMFs for GSA (N/A instead of 0)
  */
 
 var allData;
@@ -629,10 +627,12 @@ function showClosures(data, agency) {
       backgroundColor: stateColors[state],
       data: timeperiods.map(function(time) {
         // If we have data for this time period, return it. Otherwise null.
-        try {
+        if(data[agency]['datacenters'][state][time] &&
+          data[agency]['datacenters'][state][time]['total']
+        ) {
           return data[agency]['datacenters'][state][time]['total'];
         }
-        catch(e) {
+        else {
           return 0;
         }
       })
