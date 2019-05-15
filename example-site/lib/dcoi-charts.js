@@ -191,13 +191,13 @@ function loadApp() {
       <p>Definitions changed and Key Mission Facilities (KMFs) were added in Q4 2018.</p>\
     </div>\
     <div id="tier" class="chart">\
-      <h3>Count by Tier – Most Recent Quarter</h3>\
+      <h3>Count by Tier - Most Recent Quarter</h3>\
       <div class="chart-holder"></div>\
       <div class="table-holder"></div>\
       <p class="message"></p>\
     </div>\
     <div id="kmfs" class="chart">\
-      <h3>Key Misson Facilities by Type (Most Recent Quarter)</h3>\
+      <h3>Tiered Key Misson Facility Types - Most Recent Quarter</h3>\
       <div class="chart-holder"></div>\
       <div class="table-holder"></div>\
       <p class="message"></p>\
@@ -717,7 +717,7 @@ function showKMFTypes(data, agency) {
     types = Object.keys(data[agency]['kmf'][mostRecent]);
   }
   catch(e) {
-    displayMessage('kmfs', 'No Key Mission Facilities reported for this quarter.');
+    displayMessage('kmfs', 'No Tiered Key Mission Facilities reported for this quarter.');
     return;
   }
 
