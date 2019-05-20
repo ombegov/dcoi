@@ -70,7 +70,6 @@ metrics = [
   'servers',
   'mainframes',
   'hpcs',
-  'availability',
   'energyMetering',
   'underutilizedServers',
   'plannedAvailability',
@@ -180,19 +179,6 @@ tier,
 COUNT(*) AS count,
 SUM(electricityMetered) AS energyMetering,
 SUM(underutilizedServers) AS underutilizedServers,
-SUM(
-  CASE LOWER(tier)
-    WHEN 'tier 1' THEN
-      CASE WHEN (plannedAvailabilityHours - downtimeHours) / plannedAvailabilityHours >= .99671 THEN 1 ELSE 0 END
-    WHEN 'tier 2' THEN
-      CASE WHEN (plannedAvailabilityHours - downtimeHours) / plannedAvailabilityHours >= .99749 THEN 1 ELSE 0 END
-    WHEN 'tier 3' THEN
-      CASE WHEN (plannedAvailabilityHours - downtimeHours) / plannedAvailabilityHours >= .99982 THEN 1 ELSE 0 END
-    WHEN 'tier 4' THEN
-      CASE WHEN (plannedAvailabilityHours - downtimeHours) / plannedAvailabilityHours >= .99995 THEN 1 ELSE 0 END
-    ELSE 0
-  END
-) AS availability,
 SUM(plannedAvailabilityHours) AS plannedAvailability,
 SUM(downtimeHours) AS downtime,
 SUM(mainframesCount) AS mainframes,

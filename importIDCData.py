@@ -176,6 +176,13 @@ def import_file(filename, q, conn):
 
       print(row.get('data center id'), year, quarter)
 
+      # This field is squirrelly
+      optimizationExempt = row.get('omb optimization exempt decision', '')
+      if optimizationExempt is not None:
+        optimizationExempt = int(optimizationExempt.lower() == 'yes')
+      else:
+        optimizationExempt = 0
+
       rows.append({
         'id' : row.get('data center id'),
         'quarter' : quarter,
@@ -189,7 +196,7 @@ def import_file(filename, q, conn):
         'grossFloorArea' : row.get('gross floor area'),
         'keyMissionFacility' : int(row.get('key mission facility').lower() == 'yes'),
         'keyMissionFacilityType' : row.get('key mission facility type'),
-        'optimizationExempt': int(row.get('optimization exempt', '').lower() == 'yes'),
+        'optimizationExempt': optimizationExempt,
         'electricityMetered' : int(row.get('electricity is metered').lower() == 'yes'),
         'avgElectricityUsage' : row.get('avg electricity usage'),
         'avgITElectricityUsage' : row.get('avg it electricity usage'),
