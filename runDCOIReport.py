@@ -37,10 +37,11 @@ def deepadd(myList, *params):
     deepadd(myList[key], *params)
 
   elif len(params) == 1:
-    if key not in myList:
-      myList[key] = params[0]
-    else:
-      myList[key] += params[0]
+    if params[0] is not None:
+      if key not in myList:
+        myList[key] = params[0]
+      else:
+        myList[key] += params[0]
 
 def getQuarter(row):
   return "{} Q{}".format(row['year'], row['quarter'])
@@ -86,13 +87,21 @@ conn.row_factory = sqlite3.Row
 c = conn.cursor()
 
 
-# First, get our overall counts.
+# First, get our agency list.
+
+c.execute('SELECT agency from datacenters GROUP BY agency')
+for row in c.fetchall():
+  data[row['agency']] = {}
+
+
+# Next get overall counts.
 
 c.execute('''
 SELECT
 agency,
 year,
 quarter,
+SUM(optimizationExempt) as optimizationExempt,
 COUNT(*) AS count,
 keyMissionFacility,
 closingStage,
@@ -127,13 +136,19 @@ for row in c.fetchall():
 
   # Agency
   deepadd(data, row['agency'], 'datacenters', closingStage, quarter, tier, row['count'])
+  deepadd(data, row['agency'], 'datacenters', 'optimizationExempt', quarter, tier, row['optimizationExempt'])
+
   # All Agencies Sum
   deepadd(data, allAgencies, 'datacenters', closingStage, quarter, tier, row['count'])
+  deepadd(data, allAgencies, 'datacenters', 'optimizationExempt', quarter, tier, row['optimizationExempt'])
 
   # We only add to the total if this is a tiered facility, based on our new guidance.
   if row['tier'] in tiers:
-    deepadd(data, row['agency'], 'datacenters', closingStage, quarter, 'total', row['count'])
-    deepadd(data, allAgencies, 'datacenters', closingStage, quarter, 'total', row['count'])
+    deepadd(data, row['agency'], 'datacenters', closingStage, quarter, 'tiered', row['count'])
+    deepadd(data, row['agency'], 'datacenters', 'optimizationExempt', quarter, 'tiered', row['optimizationExempt'])
+
+    deepadd(data, allAgencies, 'datacenters', closingStage, quarter, 'tiered', row['count'])
+    deepadd(data, allAgencies, 'datacenters', 'optimizationExempt', quarter, 'tiered', row['optimizationExempt'])
 
 
 # Analysis of our Key Mission Facilities.  We only do the current quarter.
@@ -160,8 +175,8 @@ for row in c.fetchall():
   # Setup our quarter string.
   quarter = getQuarter(row)
 
-  deepadd(data, row['agency'], 'kmf', quarter, row['keyMissionFacilityType'], 'total', row['count'])
-  deepadd(data, allAgencies, 'kmf', quarter, row['keyMissionFacilityType'], 'total', row['count'])
+  deepadd(data, row['agency'], 'kmf', quarter, row['keyMissionFacilityType'], 'tiered', row['count'])
+  deepadd(data, allAgencies, 'kmf', quarter, row['keyMissionFacilityType'], 'tiered', row['count'])
 
   if row['optimizationExempt'] == 1:
     deepadd(data, row['agency'], 'kmf', quarter, row['keyMissionFacilityType'], 'optimizationExempt', row['count'])
@@ -205,10 +220,10 @@ for row in c.fetchall():
 
   for metric in metrics:
     deepadd(data, row['agency'], 'metrics', metric, quarter, tier, row[metric])
-    deepadd(data, row['agency'], 'metrics', metric, quarter, 'total', row[metric])
+    deepadd(data, row['agency'], 'metrics', metric, quarter, 'tiered', row[metric])
 
     deepadd(data, allAgencies, 'metrics', metric, quarter, tier, row[metric])
-    deepadd(data, allAgencies, 'metrics', metric, quarter, 'total', row[metric])
+    deepadd(data, allAgencies, 'metrics', metric, quarter, 'tiered', row[metric])
 
 
 # Export our strategic plan data.
