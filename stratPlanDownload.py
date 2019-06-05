@@ -118,7 +118,7 @@ for agency in agencies:
     if not 'closures' in data:
       print('! Using old schema.')
       missingAgencies.append(agency)
-      continue;
+      continue
 
     # Delete any previous plans.
     conn.execute('DELETE FROM stratplans WHERE agency=:agency', {'agency': agency})

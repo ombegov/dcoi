@@ -111,13 +111,13 @@ WHERE ownershipType = 'Agency Owned'
 GROUP BY agency, year, quarter, tier, keyMissionFacility, closingStage
 ''')
 
-maxQuarter = (0,0);
+maxQuarter = {'year': 0, 'quarter': 0}
 
 for row in c.fetchall():
-  if(row['year'] > maxQuarter[0] or
-    (row['year'] == maxQuarter[0] and row['quarter'] > maxQuarter[1])
+  if(row['year'] > maxQuarter['year'] or
+    (row['year'] == maxQuarter['year'] and row['quarter'] > maxQuarter['quarter'])
   ):
-    maxQuarter = (row['year'], row['quarter'])
+    maxQuarter = {'year': row['year'], 'quarter': row['quarter']}
 
   # Setup our quarter string.
   quarter = getQuarter(row)
@@ -150,6 +150,33 @@ for row in c.fetchall():
     deepadd(data, allAgencies, 'datacenters', closingStage, quarter, 'tiered', row['count'])
     deepadd(data, allAgencies, 'datacenters', 'optimizationExempt', quarter, 'tiered', row['optimizationExempt'])
 
+# Determine which agencies are "done."
+maxDate = getQuarter(maxQuarter)
+
+notDone = []
+doneClosing = []
+doneAll = []
+
+for agency, datum in data.items():
+  if agency != allAgencies:
+    if('datacenters' in data[agency] and
+      'open' in data[agency]['datacenters'] and
+      maxDate in data[agency]['datacenters']['open'] and
+      'tiered' in data[agency]['datacenters']['open'][maxDate] and
+      data[agency]['datacenters']['open'][maxDate]['tiered'] > 0
+    ):
+      notDone.append(agency)
+
+    elif('datacenters' in data[agency] and
+      'kmf' in data[agency]['datacenters'] and
+      maxDate in data[agency]['datacenters']['kmf'] and
+      'tiered' in data[agency]['datacenters']['kmf'][maxDate] and
+      data[agency]['datacenters']['kmf'][maxDate]['tiered'] > 0
+    ):
+      doneClosing.append(agency)
+
+    else:
+      doneAll.append(agency)
 
 # Analysis of our Key Mission Facilities.  We only do the current quarter.
 c.execute('''
@@ -169,7 +196,7 @@ AND closingStage != 'Closed'
 AND tier IN('Tier 1', 'Tier 2', 'Tier 3', 'Tier 4')
 GROUP BY agency, keyMissionFacilityType, optimizationExempt
 ORDER BY agency, keyMissionFacilityType, optimizationExempt
-''', {'year': maxQuarter[0], 'quarter': maxQuarter[1]})
+''', {'year': maxQuarter['year'], 'quarter': maxQuarter['quarter']})
 
 for row in c.fetchall():
   # Setup our quarter string.
@@ -264,7 +291,10 @@ for row in c.fetchall():
           continue
 
       deepadd(data, row['agency'], 'plan', fieldname, year, status, value)
-      deepadd(data, allAgencies, 'plan', fieldname, year, status, value)
+
+      # Don't include metrics from agencies that are complete in our calculations
+      if row['agency'] not in doneAll or fieldname in ['savings', 'closures']:
+        deepadd(data, allAgencies, 'plan', fieldname, year, status, value)
 
 # Availability for all agencies doesn't make sense, since it's a percentage.
 del data[allAgencies]['plan']['availability']

@@ -100,15 +100,16 @@ def import_file(filename, q, conn):
       if row.get('agency abbreviation') not in agencies:
         agencies.append(row.get('agency abbreviation'))
 
-        # When DEBUGging import problems, uncomment this.
-        #print('Clearing {} {} q{}'.format(row.get('agency abbreviation'), year, quarter))
-        #c.execute('DELETE FROM datacenters WHERE year=:year AND quarter=:quarter AND agency=:agency',
-        #  {
-        #    'year': year,
-        #    'quarter': quarter,
-        #    'agency': row.get('agency abbreviation')
-        #  }
-        #)
+        # When DEBUGging import problems, uncomment this.  This is very slow otherwise.
+        # TODO: make this a commandline flag.
+        print('Clearing {} {} q{}'.format(row.get('agency abbreviation'), year, quarter))
+        c.execute('DELETE FROM datacenters WHERE year=:year AND quarter=:quarter AND agency=:agency',
+          {
+            'year': year,
+            'quarter': quarter,
+            'agency': row.get('agency abbreviation')
+          }
+        )
 
         # Flush previous rows.
         if len(rows):
