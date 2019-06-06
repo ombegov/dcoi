@@ -12,6 +12,7 @@
   justify-content: space-evenly;
 }
 
+/* Print styles */
 @media print {
   .charts {
     display: block;
@@ -35,6 +36,10 @@
   }
 
   .dataTables_filter {
+    display: none;
+  }
+
+  .helper-text {
     display: none;
   }
 }
@@ -106,9 +111,18 @@
 }
 
 .summary-table {
-  margin-top: -2rem;
+  /*margin-top: -2rem;*/
 }
 
-.summary-table .highlight {
+.complete {
+  background-color: #d4edda;
+}
+
+.goal-met {
+  background-color: #cce5ff;
+}
+
+.highlight {
+  font-weight: bold;
   background-color: #fff3cd;
 }

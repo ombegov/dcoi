@@ -1,11 +1,23 @@
 /**
  * Visualizations for DCOI data.
  *
+ * Todo:
+ *  * add file meta (updated datetime)
  */
 
 var allData;
 var allTimeperiods;
 var allMostRecent;
+var mostRecentYear;
+var mostRecentQuarter;
+var planYears = [];
+var planPastYears = [];
+
+const changeData = '2018 Q4';
+var changeIdx;
+var newTimeperiods;
+
+var dataObj;
 
 const colors = {
   'green': '#28a745',
@@ -53,14 +65,70 @@ const kmfTypeColors = {
   'Other': colors['purple']
 };
 
-const changeData = '2018 Q4';
 
 const allAgencies = 'All Agencies';
 
 const tiers = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4'];
 
+/* SafeObj helpers: map & reducer functions. */
+
+// Array to object keys.
+function _arrObj (arr) {
+  let obj = {}
+  arr.forEach(function(elm) { obj[elm] = null; });
+  return obj;
+}
+
+// Replace null with zero.
+function _nullZero(val) { return val || 0 };
+
+// Sum any arguments.
+function _sum(vals) {
+  if(vals) {
+    return vals.reduce(function(acc, val) { return acc + val; })
+  }
+  return 0;
+}
+
+// Combines the values of two arrays at each index.
+function _sumArray(arr1, arr2) {
+  if(arr1) {
+    if(arr2) {
+      return arr1.map(function(val, i) {
+        let val1 = arr1[i] || 0;
+        let val2 = arr2[i] || 0;
+        return val1 + val2;
+      });
+    }
+    else {
+      return arr1;
+    }
+  }
+  else {
+    return arr2;
+  }
+}
+
+function _oForEach(obj, callback) {
+  let keys = Object.keys(obj);
+  let results = [];
+  for(let i = 0; i < keys.length; i++) {
+    results.push(callback(keys[i], obj[keys[i]], i, keys));
+  }
+  return results;
+}
+
+function times(n, str) {
+  let result = '';
+  for(let i = 0; i < n; i++) {
+    result += str;
+  }
+  return result;
+}
+
 function localizeValue(value, label) {
   if(label && (label.indexOf('Percent') > -1 || label.indexOf('%') > -1)) {
+    if(value == 'N/A') { return value; }
     return percentValue(value);
   }
   return parseInt(value).toLocaleString();
@@ -154,8 +222,25 @@ $( document ).ready(function (){
   loadApp();
   $.getJSON('./data.json', function(data) {
     allData = data;
+    dataObj = new SafeObj(data);
+
+    // Establish our global data timeperiods.
     allTimeperiods = Object.keys(data[allAgencies]['datacenters']['closed']).sort();
     allMostRecent = allTimeperiods[ allTimeperiods.length - 1 ];
+    changeIdx = allTimeperiods.indexOf(changeData);
+    newTimeperiods = allTimeperiods.slice(changeIdx);
+
+    [mostRecentYear, mostRecentQuarter] = allMostRecent.split(' ');
+
+    Object.keys(data[allAgencies]['plan']['closures']).forEach(function(year) {
+      if(planYears.indexOf(year) == -1) {
+        planYears.push(year);
+
+        if(year <= mostRecentYear) {
+          planPastYears.push(year);
+        }
+      }
+    });
 
     setAgencies(Object.keys(data));
     showSummaryTable(data);
@@ -173,8 +258,13 @@ function loadApp() {
   <h1 id="agency-name"></h1>\
   <div id="main-message" class="message"></div>\
   <h2>Summary</h2>\
+  <p class="helper-text">Field titles may be clicked to sort on that field.</p>\
   <div class="summary-table" id="summary-table"></div>\
+  <p>Agencies marked with <strong>*</strong> had not reported a strategic plan at the time this report was generated. Goal information is incomplete for these agencies.</p>\
+  <p><span class="complete">Fields marked in green indicate agencies that have completed this requirement of DCOI and have no further work required in this area.</span></p>\
+  <p><span class="goal-met">Fields marked in blue indicate agencies that have met their current fiscal year goal for this component of DCOI.</span></p>\
   <h2>Cost Savings & Closures</h2>\
+  <p class="helper-text">Labels in the legend may be clicked to hide or show that data category in the chart.</p>\
   <div class="charts">\
     <div id="count-tiered" class="chart">\
       <h3>Closures Over Time – Tiered Only</h3>\
@@ -212,7 +302,8 @@ function loadApp() {
   </div>\
   <div id="optimization">\
     <h2>Optimization Metrics</h2>\
-    <p>Note: Optimization metrics are only calculated for tiered data centers designed for such improvements. Exemptions are granted by permission of OMB.</p>\
+    <p class="exemption">Note: Optimization metrics are only calculated for tiered data centers designed for such improvements. Exemptions are granted by permission of OMB. <span class="exemption-count"></span></p>\
+    <p class="helper-text">Labels in the legend may be clicked to hide or show that data category in the chart.</p>\
     <p class="message"></p>\
   </div>\
   <div class="charts" id="optimization-charts">\
@@ -316,7 +407,7 @@ function setAgencies(agencies) {
   });
 }
 
-function buildTable (config) {
+function buildTable(config) {
   let data = config.data;
   let datasets = data.datasets;
 
@@ -384,24 +475,33 @@ function buildTable (config) {
 
 function showSummaryTable(data) {
   let agencies = Object.keys(data);
-  let fields = ['Savings', 'Closures', 'Virtualization', 'Availability', 'Metering', 'Utilization'];
-
-  let timeperiods = Object.keys(data[allAgencies]['datacenters']['closed']).sort();
-  let mostRecent = timeperiods[ timeperiods.length - 1 ];
+  let fields = [
+    'Total Savings<br>(millions of dollars)',
+    'Open<br>(valid data centers)',
+    'Closures<br>(valid data centers)',
+    'Virtualization<br>(virtual hosts)',
+    'Availability<br>(percent uptime)',
+    'Metering<br>(number of data centers)',
+    'Utilization<br>(underutilized servers)'
+  ];
 
   // Remove "All Agencies"
   agencies.splice( agencies.indexOf(allAgencies), 1 );
   agencies = agencies.sort();
 
-  let table = '<table class="table datatable">';
-  table += '<thead><tr><th>Agency</th>';
+  let table = '<table class="table datatable">\
+    <thead>';
+  table += tr(th('Agency', {rowspan:2}) + th(fields, {colspan:2}) );
 
-  table += fields.reduce( function(acc, field) { return acc + th(field); }, '');
+  table += times(1, th(['Current', 'Goal']));
+  table += th(['Regular', 'KMF']);
+  table += times(5, th(['Current', 'Goal']));
 
-  table += '</tr></thead><tbody>';
+  table +='</thead>\
+    <tbody>';
 
   agencies.forEach(function(agency) {
-    table += tr(agency, data[agency]);
+    table += row(agency, data[agency]);
   });
 
   table += '</tbody></table>';
@@ -410,8 +510,14 @@ function showSummaryTable(data) {
 
   // DataTable configuration
   var numbersType = $.fn.dataTable.absoluteOrderNumber( [
-    { value: '-', position: 'bottom' }
+    { value: '-', position: 'bottom' },
+    { value: 'Complete', position: 'bottom' }
   ] );
+
+  let targets = [];
+  for(i = 1; i <= (fields.length * 2); i++) {
+    targets.push(i);
+  }
 
   $('#summary-table table').DataTable({
      paging: false,
@@ -420,84 +526,205 @@ function showSummaryTable(data) {
        {
          orderSequence: [ "desc", "asc" ],
          type: numbersType,
-         targets: [1,2,3,4,5,6]
+         targets: targets
        }
      ]
   });
 
-  function tr(agency, data) {
-    let cls = nameToClass(agency);
-    let row = '<tr class="' + cls + '">';
+  function row(agency, data) {
+    let classes = [nameToClass(agency)];
+    let row = '';
+    let name = agency;
+    if(!dataObj.get(agency, 'plan')) {
+      name += '*';
+    }
 
-    row += th(agency);
+    row += th(name);
 
     // Savings
-    if(data['plan'] && data['plan']['savings']) {
-      row += td( Object.keys(data['plan']['savings']).reduce( function(acc, field) {
-        if(field !== 'total' &&
-          typeof data['plan']['savings'][field]['Achieved'] != 'undefined') {
-          acc += parseFloat(data['plan']['savings'][field]['Achieved']);
-        }
-        return acc;
-      }, 0).toFixed(2));
-    }
-    else {
-      row += td('-');
-    }
+
+    let savingsPlanned = dataObj.sum(agency, 'plan.savings', planPastYears, 'Planned');
+    let savingsAchieved = dataObj.sum(agency, 'plan.savings', planPastYears, 'Achieved');
+
+    row += td([
+      savingsAchieved !== null ? savingsAchieved.toFixed(2) : '-',
+      savingsPlanned !== null ? savingsPlanned.toFixed(2) : '-'
+    ]);
+
+    // Open Facilities
+    let regularCount = dataObj.get(agency, 'datacenters.open', allMostRecent, 'tiered') || 0;
+    let openClass = regularCount ? '' : 'complete';
+
+    row += td(
+      regularCount,
+      {'class': openClass}
+    );
+    row += td(
+      dataObj.get(agency, 'datacenters.kmf', allMostRecent, 'tiered') || 0,
+      {'class': openClass}
+    );
 
     // Closures
-    row += td(data['datacenters']['closed'][mostRecent]['total'] || '-')
+    let open = dataObj.sum(agency, 'datacenters.[open,kmf]', allMostRecent, 'tiered') || 0;
+    let regularOnly = dataObj.sum(agency, 'datacenters.[open]', allMostRecent, 'tiered') || 0;
+    let exempt = dataObj.get(agency, 'datacenters.optimizationExempt', allMostRecent, 'tiered') || 0;
+    let nonExempt = open - exempt;
+    let closed = dataObj.get(agency, 'datacenters.closed', allMostRecent, 'tiered');
+    let closuresPlanned = dataObj.get(agency, 'plan.closures', mostRecentYear, 'Planned');
+    let closedClass = openClass;
+    if(closedClass == '' && closed != null && closuresPlanned != null && closed >= closuresPlanned) {
+      closedClass = 'goal-met';
+    }
 
-    // Some agencies have no metrics.
-    if(data['metrics']) {
-      // Virtualization
+
+    row += td(
+      closed != null ? localizeValue(closed) : '-',
+      {'class': closedClass}
+    );
+
+    if(open == 0) {
+      row += td('Complete', {class: 'complete'});
+    }
+    else {
+      if(regularCount == 0 && (closuresPlanned == null || closuresPlanned == 0)) {
+        closuresPlanned = 'Complete';
+      }
+      else if(closuresPlanned == null) {
+        closuresPlanned = '-';
+      }
+      else {
+        closuresPlanned = localizeValue(closuresPlanned);
+      }
+
       row += td(
-        data['metrics']['virtualization'][mostRecent] ?
-        data['metrics']['virtualization'][mostRecent]['total'] : '-'
+        closuresPlanned,
+        {'class': closedClass}
+      );
+    }
+
+    // Some agencies are done.
+    if(open == 0 || nonExempt == 0) {
+      row += times(8, td('Complete', {'class': 'complete'}));
+    }
+    // Some agencies have no metrics.
+    else if(typeof data['metrics'] == 'undefined') {
+      row += times(8, td('-'));
+    }
+    else {
+
+      // Virtualization
+      let virtualAchieved = dataObj.get(agency, 'metrics.virtualization', allMostRecent, 'tiered');
+      let virtualPlanned = dataObj.get(agency, 'plan.virtualization', mostRecentYear, 'Planned');
+      let virtOpts = {};
+      if(virtualAchieved != null && virtualPlanned != null && virtualAchieved >= virtualPlanned) {
+        virtOpts.class = 'goal-met';
+      }
+
+      row += td(
+        virtualAchieved != null ? localizeValue(virtualAchieved) : '-',
+        virtOpts
+      );
+
+      row += td(
+        virtualPlanned != null ? localizeValue(virtualPlanned) : '-',
+        virtOpts
       );
 
       // Availability
-      let percent = '-';
-      if(data['metrics']['availability'][mostRecent]) {
-        if(data['metrics']['downtime'][mostRecent]['total']) {
-          percent = (
-            (
-              data['metrics']['plannedAvailability'][mostRecent]['total'] -
-              data['metrics']['downtime'][mostRecent]['total']
-            ) / data['metrics']['plannedAvailability'][mostRecent]['total'] * 100
-          ).toFixed(4)+'%'
+
+      let availPercent = '-';
+      let availHours = dataObj.get(agency, 'metrics.plannedAvailability', allMostRecent, 'tiered');
+      let downtime = dataObj.get(agency, 'metrics.downtime', allMostRecent, 'tiered') || 0;
+      let availPlanned = dataObj.get(agency, 'plan.availability', mostRecentYear, 'Planned');
+      let availOpts = {};
+
+      if(availHours) {
+        if(downtime) {
+          availPercent = ((availHours - downtime) / availHours * 100).toFixed(4);
         }
         else {
-          percent = '100.0000%';
+          availPercent = 100;
         }
+        // If our availability is 100%, that meets any goal we could possibly set.
+        if((availPlanned != null || availPercent == 100) && availPercent >= availPlanned) {
+          availOpts.class = 'goal-met';
+        }
+
+        availPercent = localizeValue(availPercent, 'Percent');
       }
-      row += td(percent);
+
+      row += td(availPercent, availOpts);
+
+      row += td(
+        availPlanned != null ? localizeValue(availPlanned, 'Percent') : '-',
+        availOpts
+      );
 
       // Metering
+
+      let meteringAchieved = dataObj.get(agency, 'metrics.energyMetering', allMostRecent, 'tiered');
+      let meteringPlanned = dataObj.get(agency, 'plan.energyMetering', mostRecentYear, 'Planned');
+      let meterOpts = {};
+      if(meteringAchieved != null && meteringPlanned != null &&
+          meteringAchieved >= meteringPlanned) {
+        meterOpts.class = 'goal-met';
+      }
+
       row += td(
-        data['metrics']['energyMetering'][mostRecent] ?
-        data['metrics']['energyMetering'][mostRecent]['total'] : '-'
+        meteringAchieved != null ? localizeValue(meteringAchieved) : '-',
+        meterOpts
+      );
+
+      row += td(
+        meteringPlanned != null ? localizeValue(meteringPlanned) : '-',
+        meterOpts
       );
 
       // Utilization
+      let utilizationAchieved = dataObj.get(agency, 'metrics.underutilizedServers', allMostRecent, 'tiered');
+      let utilizationPlanned = dataObj.get(agency, 'plan.underutilizedServers', mostRecentYear, 'Planned');
+      let utilOpts = {};
+      if(utilizationAchieved != null && utilizationPlanned != null &&
+          utilizationAchieved >= utilizationPlanned) {
+        utilOpts.class = 'goal-met';
+      }
+
       row += td(
-        data['metrics']['underutilizedServers'][mostRecent] ?
-        data['metrics']['underutilizedServers'][mostRecent]['total'] : '-'
+        utilizationAchieved != null ? localizeValue(utilizationAchieved) : '-',
+        utilOpts
+      );
+
+      row += td(
+        utilizationPlanned != null ? localizeValue(utilizationPlanned) : '-',
+        utilOpts
       );
     }
-    else {
-      row += td('-')+td('-')+td('-')+td('-');
+
+    return tr(row, {'class': classes.join(' ')});
+  }
+  function _elm(tag, elm, opts) {
+    if(Array.isArray(elm)) {
+      return elm.reduce( function(acc, inner) {
+          acc += _elm(tag, inner, opts);
+          return acc;
+      }, '');
     }
-
-    row += '</tr>';
-
-    return row;
+    return '<' + tag + _params(opts) + '>' + elm + '</' + tag + '>';
   }
-  function th(elm) {
-    return '<th>' + elm + '</th>';
+  function _params(opts) {
+    if(!opts) { return '' };
+    return ' ' + Object.keys(opts).map(function(key) {
+      return key + '="'+opts[key]+'"';
+    }, '').join(' ');
   }
-  function td(elm) {
-    return '<td>' + elm + '</td>';
+  function th(elm, opts) {
+    return _elm('th', elm, opts);
+  }
+  function td(elm, opts) {
+    return _elm('td', elm, opts);
+  }
+  function tr(elm, opts) {
+    return _elm('tr', elm, opts);
   }
 }
 
@@ -518,7 +745,7 @@ function showData(data, agency) {
   $('#agency-name').text(agency);
 
   $('#main-message').empty();
-  if(!data[agency]['plan'] || !Object.keys(data[agency]['plan'])) {
+  if(!dataObj.get(agency,'plan')) {
     $('#main-message').text(
       'At the time this report was generated, this agency had not submitted an \
       updated strategic plan. As a result, target goals for this agency are \
@@ -531,28 +758,33 @@ function showData(data, agency) {
   showKMFTypes(data, agency);
   showSavings(data, agency);
 
-  let total = 0;
-  if(
-    typeof data[agency]['datacenters']['open'][allMostRecent] != 'undefined' &&
-    typeof data[agency]['datacenters']['open'][allMostRecent]['total'] != 'undefined'
-  ) {
-    total += data[agency]['datacenters']['open'][allMostRecent]['total'];
-  }
-  if(
-    typeof data[agency]['datacenters']['kmf'][allMostRecent] != 'undefined' &&
-    typeof data[agency]['datacenters']['kmf'][allMostRecent]['total'] != 'undefined'
-  ) {
-    total += data[agency]['datacenters']['kmf'][allMostRecent]['total'];
-  }
+  let tiered = dataObj.sum(agency, 'datacenters.[open,kmf]', allMostRecent, 'tiered') || 0;
 
-  if(total == 0) {
-    $('#optimization .message').empty().text('This agency has no remaining open \
+  let exempt = dataObj.get(agency, 'datacenters.optimizationExempt', allMostRecent, 'tiered') || 0;
+
+  if(tiered == 0) {
+    $('#optimization .message').removeClass('helper-text').empty().text('This agency has no remaining open \
       Tiered data centers, and is complete for all optimization purposes.');
+    $('#optimization-charts').hide();
+    $('#optimization > .helper-text').hide();
+  }
+  else if(exempt >= tiered) {
+    $('#optimization .message').removeClass('helper-text').empty().text('All '+ exempt + ' remaining \
+      data centers for this agency are key mission facilities that are exempt from optimization  as \
+      of ' + mostRecentQuarter + ' ' + mostRecentYear + '. This agency is complete for all optimization purposes.');
     $('#optimization-charts').hide();
   }
   else {
-    $('#optimization .message').empty();
+    if(exempt) {
+      let intro = 'This agency has ';
+      if(agency == allAgencies) {
+        intro = 'In total, there are ';
+      }
+      $('#optimization .exemption-count').text(intro + exempt + ' key mission facilities \
+        exempt from optimization as of ' + mostRecentQuarter + ' ' + mostRecentYear + '.');
+    }
     $('#optimization-charts').show();
+    $('#optimization > .helper-text').show();
 
     showVirtualization(data, agency);
     showAvailability(data, agency);
@@ -564,8 +796,7 @@ function showData(data, agency) {
 
 function showClosures(data, agency) {
   let closeState = ['closed', 'open', 'kmf'];
-  let timeperiods = Object.keys(data[allAgencies]['datacenters'][ closeState[0] ]).sort();
-  let mostRecent = timeperiods[ timeperiods.length - 1 ];
+  let closeStateObj = _arrObj(closeState);
 
   // Data Center Counts
   countData = {
@@ -587,7 +818,7 @@ function showClosures(data, agency) {
       }
     },
     data: {
-      labels: timeperiods.sort()
+      labels: allTimeperiods
     },
     lines: [
       { value: '2018 Q4' }
@@ -597,60 +828,40 @@ function showClosures(data, agency) {
   // Create a copy of this chart.
   let countTierData = $.extend(true,{},countData);
 
-  countData.data.datasets = closeState.map(function(state) {
-    return {
+  countData.data.datasets = [];
+  countTierData.data.datasets = []
+
+  closeState.forEach(function(state) {
+    let tieredCount = dataObj.get(agency, 'datacenters', state, allTimeperiods, 'tiered').map(_nullZero);
+    let nontieredCount = dataObj.get(agency, 'datacenters', state, allTimeperiods, 'nontiered').map(_nullZero);
+
+    countData.data.datasets.push({
       label: state,
       backgroundColor: stateColors[state],
-      data: timeperiods.map(function(time) {
-        let result = 0;
+      data: _sumArray(tieredCount, nontieredCount)
+    });
 
-        // Sum of "total" (Tiered) and "nontiered"
-        if(data[agency]['datacenters'][state] &&
-          data[agency]['datacenters'][state][time]) {
-          if(data[agency]['datacenters'][state][time]['total']) {
-            result += data[agency]['datacenters'][state][time]['total'];
-          }
-
-          if(data[agency]['datacenters'][state][time]['nontiered']) {
-            result += data[agency]['datacenters'][state][time]['nontiered'];
-          }
-        }
-
-        return result;
-      })
-    };
-  });
-
-  countTierData.data.datasets = closeState.map(function(state) {
-    return {
+    countTierData.data.datasets.push({
       label: state,
       backgroundColor: stateColors[state],
-      data: timeperiods.map(function(time) {
-        // If we have data for this time period, return it. Otherwise null.
-        if(data[agency]['datacenters'][state][time] &&
-          data[agency]['datacenters'][state][time]['total']
-        ) {
-          return data[agency]['datacenters'][state][time]['total'];
-        }
-        else {
-          return 0;
-        }
-      })
-    };
+      data: tieredCount
+    });
   });
 
-  if(data[agency]['plan'] && data[agency]['plan']['closures']) {
+
+  if(dataObj.get(agency, 'plan.closures')) {
     countTierData.options.annotation = {
       drawTime: 'afterDatasetsDraw',
       annotations: []
     };
 
-    Object.keys(data[agency]['plan']['closures']).forEach(function(year, idx, arr) {
-      countTierData.options.annotation.annotations.push(
-        goalLine(data[agency]['plan']['closures'][year]['Planned'],
-          year, idx, ' Closed', arr.length)
+    countTierData.options.annotation.annotations =
+      _oForEach(
+        dataObj.get(agency, 'plan.closures.{*}.Planned'),
+        function(year, val, idx, keys) {
+          return goalLine(_nullZero(val), year, idx, ' Closed', keys.length);
+        }
       );
-    });
   }
 
   let countAllChart = chartWrap('count-all', countData);
@@ -663,7 +874,7 @@ function showClosures(data, agency) {
     options: {
       title: {
         display: true,
-        text: mostRecent
+        text: allMostRecent
       },
       tooltips: {
         mode: 'index',
@@ -691,10 +902,10 @@ function showClosures(data, agency) {
       data: tierData.data.labels.map(function(tier) {
         // If we have data for this time period, return it. Otherwise 0.
         if(data[agency]['datacenters'][state] &&
-          data[agency]['datacenters'][state][mostRecent] &&
-          data[agency]['datacenters'][state][mostRecent][tier]
+          data[agency]['datacenters'][state][allMostRecent] &&
+          data[agency]['datacenters'][state][allMostRecent][tier]
         ) {
-          return data[agency]['datacenters'][state][mostRecent][tier];
+          return data[agency]['datacenters'][state][allMostRecent][tier];
         }
         else {
           return 0;
@@ -733,7 +944,7 @@ function showKMFTypes(data, agency) {
     options: {
       title: {
         display: true,
-        text: mostRecent
+        text: allMostRecent
       },
       tooltips: {
         mode: 'index',
@@ -767,7 +978,7 @@ function showKMFTypes(data, agency) {
     kmfData.data.datasets[0].backgroundColor.push(kmfTypeColors[type]);
     try {
       kmfData.data.datasets[0].data.push(
-      data[agency]['kmf'][mostRecent][type]['total']
+      data[agency]['kmf'][allMostRecent][type]['tiered']
       );
     }
     catch(e) {
@@ -800,7 +1011,6 @@ function showSavings(data, agency) {
     return;
   }
 
-  let timeperiods = Object.keys(data[agency]['plan']['savings']);
   let plannedData = {
     label: 'Planned',
     borderColor: colors['grey'],
@@ -820,7 +1030,7 @@ function showSavings(data, agency) {
     data: []
   };
   let totalData = {
-    hidden: true,
+    // hidden: true,
     label: 'Cumulative',
     borderColor: colors['blue'],
     backgroundColor: colors['trans-blue'],
@@ -829,10 +1039,10 @@ function showSavings(data, agency) {
     data: []
   }
 
-  $.each(timeperiods, function(i, timeperiod) {
-    plannedData['data'].push( data[agency]['plan']['savings'][timeperiod]['Planned'] );
-    achievedData['data'].push( data[agency]['plan']['savings'][timeperiod]['Achieved'] );
+  plannedData['data'] = dataObj.get(agency, 'plan.savings.[*].Planned');
+  achievedData['data'] = dataObj.get(agency, 'plan.savings.[*].Achieved');
 
+  achievedData['data'].forEach(function(elm, i) {
     let value = 0;
     if(i > 0) {
       value = totalData['data'][i-1];
@@ -846,7 +1056,7 @@ function showSavings(data, agency) {
   savingsData = {
     type: 'line',
     data: {
-      labels: timeperiods,
+      labels: planYears,
       datasets: [plannedData, achievedData, totalData]
     },
     options: {
@@ -877,8 +1087,6 @@ function showSavings(data, agency) {
 // Metrics
 
 function showVirtualization(data, agency) {
-  let timeperiods = Object.keys(data[agency]['metrics']['virtualization']).sort();
-
   let achievedData = {
     yAxisID: 'y-axis-left',
     label: 'Virtual Hosts',
@@ -887,7 +1095,7 @@ function showVirtualization(data, agency) {
     fill: false,
     pointRadius: 6,
     lineTension: 0,
-    data: []
+    data: dataObj.get(agency, 'metrics.virtualization', allTimeperiods, 'tiered')
   };
   let serverData = {
     // hidden: true,
@@ -898,7 +1106,7 @@ function showVirtualization(data, agency) {
     fill: false,
     pointRadius: 6,
     lineTension: 0,
-    data: []
+    data: dataObj.get(agency, 'metrics.servers', allTimeperiods, 'tiered')
   };
   let percentData = {
     type: 'line',
@@ -912,12 +1120,10 @@ function showVirtualization(data, agency) {
     data: []
   };
 
-  $.each(timeperiods, function(i, timeperiod) {
-    achievedData['data'].push( data[agency]['metrics']['virtualization'][timeperiod]['total'] );
-    serverData['data'].push( data[agency]['metrics']['servers'][timeperiod]['total'] );
+  allTimeperiods.forEach(function(timeperiod, i) {
     percentData['data'].push(
-      (data[agency]['metrics']['virtualization'][timeperiod]['total'] /
-       data[agency]['metrics']['servers'][timeperiod]['total']  * 100)
+      (dataObj.get(agency, 'metrics.virtualization', timeperiod, 'tiered') /
+       dataObj.get(agency, 'metrics.servers', timeperiod, 'tiered')  * 100)
         .toFixed(2)
     );
   });
@@ -925,7 +1131,7 @@ function showVirtualization(data, agency) {
   virtualizationData = {
     type: 'bar',
     data: {
-      labels: timeperiods,
+      labels: allTimeperiods,
       datasets: [percentData, achievedData, serverData]
     },
     options: {
@@ -948,18 +1154,19 @@ function showVirtualization(data, agency) {
     }
   };
 
-  if(data[agency]['plan'] && data[agency]['plan']['virtualization']) {
+  if(dataObj.get(agency, 'plan.virtualization')) {
     virtualizationData.options.annotation = {
       drawTime: 'afterDatasetsDraw',
       annotations: []
     };
 
-    Object.keys(data[agency]['plan']['virtualization']).forEach(function(year, idx, arr) {
-      virtualizationData.options.annotation.annotations.push(
-        goalLine(data[agency]['plan']['virtualization'][year]['Planned'],
-          year, idx, ' Virtual Hosts', arr.length)
-      );
-    });
+    virtualizationData.options.annotation.annotations =
+      _oForEach(
+        dataObj.get(agency, 'plan.virtualization.{*}.Planned'),
+        function(year, val, idx, keys) {
+          return goalLine(_nullZero(val), year, idx, ' Virtual Hosts', keys.length);
+        })
+      ;
   }
 
   let virtualizationChart = chartWrap('virtualization', virtualizationData);
@@ -967,14 +1174,9 @@ function showVirtualization(data, agency) {
 
 function showAvailability(data, agency) {
   // We only have recent data for this element.
-  let timeperiods = Object.keys(data[agency]['metrics']['plannedAvailability']).sort();
 
-  let idx = timeperiods.indexOf(changeData);
-
-  if(idx < 0) {
-    displayMessage('availability', 'This agency does not have any Availability reported.');
-    return;
-  }
+  let timePeriods = Object.keys(dataObj.get(agency, 'metrics.plannedAvailability.{*}'));
+  let idx = allTimeperiods.indexOf(changeData);
 
   let totalData = {
     // hidden: true,
@@ -985,7 +1187,7 @@ function showAvailability(data, agency) {
     fill: false,
     pointRadius: 6,
     lineTension: 0,
-    data: []
+    data: dataObj.get(agency, 'metrics.plannedAvailability', newTimeperiods, 'tiered')
   };
   let downtimeData = {
     yAxisID: 'y-axis-left',
@@ -995,7 +1197,7 @@ function showAvailability(data, agency) {
     fill: false,
     pointRadius: 6,
     lineTension: 0,
-    data: []
+    data: dataObj.get(agency, 'metrics.downtime', newTimeperiods, 'tiered')
   };
   let percentData = {
     type: 'line',
@@ -1009,32 +1211,17 @@ function showAvailability(data, agency) {
     data: []
   };
 
-  for(let i = idx; i < timeperiods.length; i++) {
-    let timeperiod = timeperiods[i];
+  newTimeperiods.forEach(function(timeperiod, i) {
+    let value = 'N/A';
 
-    if(typeof data[agency]['metrics']['plannedAvailability'][timeperiod] == 'undefined') {
-      continue;
+    let plannedHours = dataObj.get(agency, 'metrics.plannedAvailability', timeperiod, 'tiered');
+    let downtime = dataObj.get(agency, 'metrics.downtime', timeperiod, 'tiered');
+    if(plannedHours) {
+      value = ((plannedHours - downtime) / plannedHours * 100).toFixed(4)
     }
 
-    totalData['data'].push(
-      data[agency]['metrics']['plannedAvailability'][timeperiod]['total']
-    );
-    downtimeData['data'].push(
-      data[agency]['metrics']['downtime'][timeperiod]['total'] || 0
-    );
-
-    let percent = 0;
-    if (data[agency]['metrics']['plannedAvailability'][timeperiod]['total']) {
-      percent = (
-        (
-          data[agency]['metrics']['plannedAvailability'][timeperiod]['total'] -
-          data[agency]['metrics']['downtime'][timeperiod]['total']
-        ) / data[agency]['metrics']['plannedAvailability'][timeperiod]['total'] * 100
-      ).toFixed(4)
-    }
-
-    percentData['data'].push(percent);
-  }
+    percentData['data'].push(value);
+  });
 
   let rightAxis = Object.assign({}, percentAxis);
 
@@ -1051,7 +1238,7 @@ function showAvailability(data, agency) {
   availabilityData = {
     type: 'bar',
     data: {
-      labels: timeperiods.slice(idx),
+      labels: newTimeperiods,
       datasets: [percentData, totalData, downtimeData]
     },
     options: {
@@ -1132,11 +1319,11 @@ function showMetering(data, agency) {
   };
 
   $.each(timeperiods, function(i, timeperiod) {
-    achievedData['data'].push( data[agency]['metrics']['energyMetering'][timeperiod]['total'] );
-    totalData['data'].push( data[agency]['metrics']['count'][timeperiod]['total'] );
+    achievedData['data'].push( data[agency]['metrics']['energyMetering'][timeperiod]['tiered'] );
+    totalData['data'].push( data[agency]['metrics']['count'][timeperiod]['tiered'] );
     percentData['data'].push(
-      (data[agency]['metrics']['energyMetering'][timeperiod]['total'] /
-       data[agency]['metrics']['count'][timeperiod]['total'] * 100 )
+      (data[agency]['metrics']['energyMetering'][timeperiod]['tiered'] /
+       data[agency]['metrics']['count'][timeperiod]['tiered'] * 100 )
         .toFixed(2)
     );
   });
@@ -1246,11 +1433,11 @@ function showUnderutilizedServers(data, agency) {
 
   for(let i = idx; i < timeperiods.length; i++) {
     let timeperiod = timeperiods[i];
-    achievedData['data'].push( data[agency]['metrics']['underutilizedServers'][timeperiod]['total'] );
-    serverData['data'].push( data[agency]['metrics']['servers'][timeperiod]['total'] );
+    achievedData['data'].push( data[agency]['metrics']['underutilizedServers'][timeperiod]['tiered'] );
+    serverData['data'].push( data[agency]['metrics']['servers'][timeperiod]['tiered'] );
     percentData['data'].push(
-      (data[agency]['metrics']['underutilizedServers'][timeperiod]['total'] /
-       data[agency]['metrics']['servers'][timeperiod]['total']  * 100)
+      (data[agency]['metrics']['underutilizedServers'][timeperiod]['tiered'] /
+       data[agency]['metrics']['servers'][timeperiod]['tiered']  * 100)
         .toFixed(2)
     );
   }
