@@ -111,7 +111,7 @@ for agency in agencies:
     try:
       data = parse(text)
     except:
-      print('! Error in file.')
+      print('! Error in file.', sys.exc_info()[0])
       missingAgencies.append(agency)
       continue
 
