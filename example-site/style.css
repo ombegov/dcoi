@@ -12,38 +12,6 @@
   justify-content: space-evenly;
 }
 
-/* Print styles */
-@media print {
-  .charts {
-    display: block;
-  }
-
-  .agency-select {
-    display: none;
-  }
-
-  .chart {
-    flex: none;
-    page-break-inside: avoid;
-  }
-
-  h2 {
-    margin-bottom: 2rem;
-  }
-
-  .summary-table {
-    margin-top: 0;
-  }
-
-  .dataTables_filter {
-    display: none;
-  }
-
-  .helper-text {
-    display: none;
-  }
-}
-
 .chart {
 /*  flex-basis: 0;
   min-width: 500px;
@@ -79,15 +47,53 @@
 
 .table th,
 .table td {
-  font-size: 0.85rem;
+  font-size: 0.85em;
   text-align: center;
   border-right: 1px solid #aaaaaa;
   border-bottom: 1px solid #aaaaaa;
   padding: 3px 4px;
 }
 
-.chart .table-holder tbody tr:nth-of-type(2n+1) {
-  background-color: #eeeeee;
+.table th .units {
+  font-size: 0.85em;
+  font-weight: normal;
+}
+
+/* Row colors */
+.highlight {
+  font-weight: bold;
+  background-color: #fff3cd !important;
+}
+
+.complete {
+  background-color: #d4edda;
+}
+.selected .complete,
+.highlight .complete {
+  background-color: #84cb95;
+}
+
+.goal-met {
+  background-color: #cce5ff;
+}
+.selected .goal-met,
+.highlight .goal-met {
+  background-color: #59aafe;
+}
+
+/* Border rules */
+/* Always after the rop row */
+.datatable thead tr:first-child th,
+/* first col */
+.datatable tbody tr :first-child,
+/* second col */
+.datatable thead tr:nth-child(2) th:nth-child(3),
+.datatable tbody tr :nth-child(4),
+/* every other col */
+.datatable thead tr:nth-child(2) th:nth-child(2n + 3),
+.datatable tbody tr :nth-child(2n + 4)
+{
+  border-right: 2px solid #000000;
 }
 
 .goals {
@@ -98,7 +104,7 @@
 }
 
 .goals li {
-  font-size: 0.85rem;
+  font-size: 0.85em;
   text-align: left;
   margin-right: 1.5rem;
   margin-bottom: 0.5rem;
@@ -108,21 +114,4 @@
 }
 .goals label:after {
   content: ':';
-}
-
-.summary-table {
-  /*margin-top: -2rem;*/
-}
-
-.complete {
-  background-color: #d4edda;
-}
-
-.goal-met {
-  background-color: #cce5ff;
-}
-
-.highlight {
-  font-weight: bold;
-  background-color: #fff3cd;
 }

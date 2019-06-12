@@ -139,7 +139,6 @@ function percentValue(value) {
 }
 
 /* Begin global chart configuration  */
-
 Chart.defaults.global.tooltips.callbacks.label =
   function(obj) {
     let label = this._data.datasets[obj.datasetIndex].label;
@@ -245,6 +244,12 @@ $( document ).ready(function (){
     setAgencies(Object.keys(data));
     showSummaryTable(data);
     showData(data, currentAgency);
+
+    window.addEventListener("beforeprint", function() {
+      for (var id in Chart.instances) {
+        Chart.instances[id].resize();
+      }
+    });
   });
 });
 
@@ -263,6 +268,8 @@ function loadApp() {
   <p>Agencies marked with <strong>*</strong> had not reported a strategic plan at the time this report was generated. Goal information is incomplete for these agencies.</p>\
   <p><span class="complete">Fields marked in green indicate agencies that have completed this requirement of DCOI and have no further work required in this area.</span></p>\
   <p><span class="goal-met">Fields marked in blue indicate agencies that have met their current fiscal year goal for this component of DCOI.</span></p>\
+</article>\
+<article class="after-load">\
   <h2>Cost Savings & Closures</h2>\
   <p class="helper-text">Labels in the legend may be clicked to hide or show that data category in the chart.</p>\
   <div class="charts">\
@@ -300,6 +307,8 @@ function loadApp() {
       <p class="message"></p>\
     </div>\
   </div>\
+</article>\
+<article class="after-load">\
   <div id="optimization">\
     <h2>Optimization Metrics</h2>\
     <p class="exemption">Note: Optimization metrics are only calculated for tiered data centers designed for such improvements. Exemptions are granted by permission of OMB. <span class="exemption-count"></span></p>\
@@ -476,13 +485,13 @@ function buildTable(config) {
 function showSummaryTable(data) {
   let agencies = Object.keys(data);
   let fields = [
-    'Total Savings<br>(millions of dollars)',
-    'Open<br>(valid data centers)',
-    'Closures<br>(valid data centers)',
-    'Virtualization<br>(virtual hosts)',
-    'Availability<br>(percent uptime)',
-    'Metering<br>(number of data centers)',
-    'Utilization<br>(underutilized servers)'
+    'Savings<br><span class="units">millions of dollars</span>',
+    'Open<br><span class="units">valid data centers</span>',
+    'Closures<br><span class="units">valid data centers</span>',
+    'Virtualization<br><span class="units">virtual hosts</span>',
+    'Availability<br><span class="units">percent uptime</span>',
+    'Metering<br><span class="units">number of data centers</span>',
+    'Utilization<br><span class="units">underutilized servers</span>'
   ];
 
   // Remove "All Agencies"
@@ -491,9 +500,9 @@ function showSummaryTable(data) {
 
   let table = '<table class="table datatable">\
     <thead>';
-  table += tr(th('Agency', {rowspan:2}) + th(fields, {colspan:2}) );
+  table += tr(th('Agency', {rowspan:2}) + th(fields[0], {colspan:3}) + th(fields.slice(1), {colspan:2}));
 
-  table += times(1, th(['Current', 'Goal']));
+  table += th(['Current', 'Goal', 'Total']);
   table += th(['Regular', 'KMF']);
   table += times(5, th(['Current', 'Goal']));
 
@@ -515,12 +524,13 @@ function showSummaryTable(data) {
   ] );
 
   let targets = [];
-  for(i = 1; i <= (fields.length * 2); i++) {
+  for(i = 1; i <= (fields.length * 2) + 1; i++) {
     targets.push(i);
   }
 
   $('#summary-table table').DataTable({
      paging: false,
+     select: true,
      info: false,
      columnDefs: [
        {
@@ -542,14 +552,19 @@ function showSummaryTable(data) {
     row += th(name);
 
     // Savings
-
-    let savingsPlanned = dataObj.sum(agency, 'plan.savings', planPastYears, 'Planned');
-    let savingsAchieved = dataObj.sum(agency, 'plan.savings', planPastYears, 'Achieved');
+    let savingsPlanned = dataObj.get(agency, 'plan.savings', mostRecentYear, 'Planned');
+    let savingsAchieved = dataObj.get(agency, 'plan.savings', mostRecentYear, 'Achieved') || 0;
+    let savingsTotal = dataObj.sum(agency, 'plan.savings', planPastYears, 'Achieved');
+    let savingsOpts = {};
+    if(savingsAchieved !== null && savingsPlanned !== null && savingsAchieved >= savingsPlanned) {
+      savingsOpts.class = 'goal-met';
+    }
 
     row += td([
       savingsAchieved !== null ? savingsAchieved.toFixed(2) : '-',
-      savingsPlanned !== null ? savingsPlanned.toFixed(2) : '-'
-    ]);
+      savingsPlanned !== null ? savingsPlanned.toFixed(2) : '-',
+      savingsTotal !== null ? savingsTotal.toFixed(2): '-'
+    ], savingsOpts);
 
     // Open Facilities
     let regularCount = dataObj.get(agency, 'datacenters.open', allMostRecent, 'tiered') || 0;
@@ -569,13 +584,12 @@ function showSummaryTable(data) {
     let regularOnly = dataObj.sum(agency, 'datacenters.[open]', allMostRecent, 'tiered') || 0;
     let exempt = dataObj.get(agency, 'datacenters.optimizationExempt', allMostRecent, 'tiered') || 0;
     let nonExempt = open - exempt;
-    let closed = dataObj.get(agency, 'datacenters.closed', allMostRecent, 'tiered');
+    let closed = dataObj.get(agency, 'datacenters.closed', allMostRecent, 'tiered') || 0;
     let closuresPlanned = dataObj.get(agency, 'plan.closures', mostRecentYear, 'Planned');
     let closedClass = openClass;
-    if(closedClass == '' && closed != null && closuresPlanned != null && closed >= closuresPlanned) {
+    if(closedClass == '' && closuresPlanned != null && closed >= closuresPlanned) {
       closedClass = 'goal-met';
     }
-
 
     row += td(
       closed != null ? localizeValue(closed) : '-',
@@ -1276,7 +1290,7 @@ function showAvailability(data, agency) {
     });
   }
   else if(agency == allAgencies) {
-    $('#availability .message').text('Availability goals cannot be calculated for all agencies combined, as this target is a percentage of each agency\'s planned availability.');
+    $('#availability .message').text('Availability goals cannot be calculated for all agencies combined, as this target is a percentage based on each agency\'s planned availability.');
   }
 
   let availabilityChart = chartWrap('availability', availabilityData);
