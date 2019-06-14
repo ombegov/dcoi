@@ -15,8 +15,10 @@ import json
 import copy
 import re
 from decimal import Decimal
+import datetime
 
 import config
+
 
 # Convenience function for setting deep dictionary values
 # Removes a *lot* of dictionary cruft initialization!
@@ -298,6 +300,12 @@ for row in c.fetchall():
 
 # Availability for all agencies doesn't make sense, since it's a percentage.
 del data[allAgencies]['plan']['availability']
+
+# Add some metadata.
+
+data['__meta__'] = {
+  'updatedAt': datetime.datetime.now().isoformat()
+}
 
 print( jsonCleanup(json.dumps(data)) )
 # TODO: Maybe export a file instead of just printing?
