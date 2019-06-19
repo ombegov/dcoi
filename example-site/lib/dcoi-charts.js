@@ -224,7 +224,7 @@ $( document ).ready(function (){
     allData = data;
     meta = allData['__meta__'];
     delete allData['__meta__'];
-    console.log(meta);
+
     dataObj = new SafeObj(data);
 
     // Establish our global data timeperiods.
