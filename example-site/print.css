@@ -1,0 +1,58 @@
+/* Print styles */
+@page { size: auto; margin: 0mm; }
+body { margin-top: 0; background-image: none; background-color: #ffffff !important; max-width: 100%; width: 100%; }
+
+body {
+  font-size: 8pt;
+}
+
+#app, .after-load, #DataTables_Table_0 {
+  width: 100% !important;
+}
+
+.charts {
+  display: block;
+  width: 100% !important;
+}
+
+article.after-load {
+  page-break-inside: avoid;
+}
+
+.chart {
+  width: 3.75in !important;
+  page-break-inside: avoid;
+  display: inline-block;
+  vertical-align: top;
+}
+
+.chart canvas {
+  display: block;
+  height: 1.75in !important;
+  width: 3.5in !important;
+}
+
+h2 {
+  margin-bottom: 0.5rem;
+  page-break-after: avoid;
+}
+
+.summary-table {
+  margin-top: 0;
+}
+
+.agency-select {
+  display: none;
+}
+
+.dataTables_filter {
+  display: none;
+}
+
+.table.dataTable thead th {
+  background-image: none !important;
+}
+
+.helper-text {
+  display: none;
+}
