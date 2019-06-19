@@ -6,6 +6,7 @@
  */
 
 var allData;
+var meta;
 var allTimeperiods;
 var allMostRecent;
 var mostRecentYear;
@@ -221,6 +222,9 @@ $( document ).ready(function (){
   loadApp();
   $.getJSON('./data.json', function(data) {
     allData = data;
+    meta = allData['__meta__'];
+    delete allData['__meta__'];
+    console.log(meta);
     dataObj = new SafeObj(data);
 
     // Establish our global data timeperiods.
@@ -261,6 +265,7 @@ function loadApp() {
     <select id="agency-list"></select>\
   </form>\
   <h1 id="agency-name"></h1>\
+  <div id="updated-message" class="message"></div>\
   <div id="main-message" class="message"></div>\
   <h2>Summary</h2>\
   <p class="helper-text">Field titles may be clicked to sort on that field.</p>\
@@ -757,6 +762,10 @@ function showData(data, agency) {
   $('after-load').show();
 
   $('#agency-name').text(agency);
+
+  let updated = new Date(meta.updatedAt);
+  // We could use moment.js here, but it's a lot of overhead for one line.
+  $('#updated-message').text('This data was last updated ' + updated.toDateString());
 
   $('#main-message').empty();
   if(!dataObj.get(agency,'plan')) {
