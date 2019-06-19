@@ -1,8 +1,36 @@
 /**
  * Visualizations for DCOI data.
+ **
  *
- * Todo:
- *  * add file meta (updated datetime)
+ *                        ###########
+ *                    ###################
+ *               ############## ##############
+ *          #############   ,~~~~~,   #############
+ *     #############        | OMB |        #############
+ *  ###########             |OFCIO|             ###########
+ * #######                  '~~~~~'                   #######
+ * #########################################################
+ *     #################################################
+ *         =========       =========       =========
+ *         |     oo|       |     oo|       |     oo|
+ *         |===== .|       |===== .|       |===== .|
+ *         |===== .|       |===== .|       |===== .|
+ *         |===== .|       |===== .|       |===== .|
+ *         |===== .|       |===== .|       |===== .|
+ *         |===== .|       |===== .|       |===== .|
+ *         |-------|       |-------|       |-------|
+ *         | XXXXX |       | XXXXX |       | XXXXX |
+ *         | XXXXX |       | XXXXX |       | XXXXX |
+ *         =========       =========       =========
+ *      ###############################################
+ *    ############  _____   ____   ____  __  ############
+ *   ############  |  __ ',' __ '.' __ '|  |  ############
+ *   ############  | |  | | ,  '-| |  | |  |  ############
+ *   ############  | |__' | '__,-| '__' |  |  ############
+ *   ############  |_____,',____,,'____'|__|  ############
+ *   #############                           #############
+ *   #####################################################
+ *
  */
 
 var allData;
@@ -128,10 +156,16 @@ function times(n, str) {
 }
 
 function localizeValue(value, label) {
-  if(label && (label.indexOf('Percent') > -1 || label.indexOf('%') > -1)) {
-    if(value == 'N/A') { return value; }
-    return percentValue(value);
+  if(label) {
+    if(label.indexOf('Percent') > -1 || label.indexOf('%') > -1) {
+      if(value == 'N/A') { return value; }
+      return percentValue(value);
+    }
+    else if(label.indexOf('Savings') > -1) {
+      return parseFloat(parseFloat(value).toFixed(2)).toLocaleString();
+    }
   }
+
   return parseInt(value).toLocaleString();
 }
 
@@ -277,9 +311,10 @@ function loadApp() {
 <article class="after-load">\
   <h2>Cost Savings & Closures</h2>\
   <p class="helper-text">Labels in the legend may be clicked to hide or show that data category in the chart.</p>\
+  <div id="closures-savings-message" class="message"></div>\
   <div class="charts">\
     <div id="count-tiered" class="chart">\
-      <h3>Closures Over Time – Tiered Only</h3>\
+      <h3>Closures Over Time – Valid Tiered Facilities</h3>\
       <div class="chart-holder"></div>\
       <div class="table-holder"></div>\
       <p class="message"></p>\
@@ -316,7 +351,7 @@ function loadApp() {
 <article class="after-load">\
   <div id="optimization">\
     <h2>Optimization Metrics</h2>\
-    <p class="exemption">Note: Optimization metrics are only calculated for tiered data centers designed for such improvements. Exemptions are granted by permission of OMB. <span class="exemption-count"></span></p>\
+    <p class="exemption">Note: Optimization metrics are only calculated for valid, agency-owned, tiered data centers designed for such improvements. All exemptions are granted only by explicit permission of OMB. <span class="exemption-count"></span></p>\
     <p class="helper-text">Labels in the legend may be clicked to hide or show that data category in the chart.</p>\
     <p class="message"></p>\
   </div>\
@@ -344,7 +379,7 @@ function loadApp() {
       <div class="chart-holder"></div>\
       <div class="table-holder"></div>\
       <p class="message"></p>\
-      <p>Definitions for energy meterting changed in Q4 2018.</p>\
+      <p>Definitions for energy metering changed in Q4 2018.</p>\
     </div>\
     <div id="utilization" class="chart">\
       <h3>Underutilized Servers</h3>\
@@ -454,15 +489,18 @@ function buildTable(config) {
 
   let columnCount = 0;
   datasets.forEach(function (set, i) {
-    let label = set.label || '';
+    if(datasets[i] && datasets[i].data) {
+      let label = set.label || '';
 
-    table += '<tr>';
-    table += '<th>' + label + '</th>';
-    datasets[i].data.forEach(function(datum, j) {
-      datum = fn(datum || 0, label);
-      table += '<td>' + datum + '</td>';
-    });
-    table += '</tr>';
+      table += '<tr>';
+      table += '<th>' + label + '</th>';
+
+      datasets[i].data.forEach(function(datum, j) {
+        datum = fn(datum || 0, label);
+        table += '<td>' + datum + '</td>';
+      });
+      table += '</tr>';
+    }
   });
 
   table += '</tbody></table>';
@@ -699,12 +737,12 @@ function showSummaryTable(data) {
         meterOpts
       );
 
-      // Utilization
+      // Utilization - this is the only field that should be *less* than the goal!
       let utilizationAchieved = dataObj.get(agency, 'metrics.underutilizedServers', allMostRecent, 'tiered');
       let utilizationPlanned = dataObj.get(agency, 'plan.underutilizedServers', mostRecentYear, 'Planned');
       let utilOpts = {};
       if(utilizationAchieved != null && utilizationPlanned != null &&
-          utilizationAchieved >= utilizationPlanned) {
+          utilizationAchieved <= utilizationPlanned) {
         utilOpts.class = 'goal-met';
       }
 
@@ -763,6 +801,9 @@ function showData(data, agency) {
 
   $('#agency-name').text(agency);
 
+  // Clear messages
+  $('.message').html('');
+
   let updated = new Date(meta.updatedAt);
   // We could use moment.js here, but it's a lot of overhead for one line.
   $('#updated-message').text('This data was last updated ' + updated.toDateString());
@@ -782,14 +823,19 @@ function showData(data, agency) {
   showSavings(data, agency);
 
   let tiered = dataObj.sum(agency, 'datacenters.[open,kmf]', allMostRecent, 'tiered') || 0;
-
   let exempt = dataObj.get(agency, 'datacenters.optimizationExempt', allMostRecent, 'tiered') || 0;
+
+  let empty = !dataObj.get(agency, 'datacenters');
 
   if(tiered == 0) {
     $('#optimization .message').removeClass('helper-text').empty().text('This agency has no remaining open \
       Tiered data centers, and is complete for all optimization purposes.');
     $('#optimization-charts').hide();
     $('#optimization > .helper-text').hide();
+
+    if(empty) {
+      $('#closures-savings-message').html('<p>This agency had no open data centers for the entire period of reporting.</p>');
+    }
   }
   else if(exempt >= tiered) {
     $('#optimization .message').removeClass('helper-text').empty().text('All '+ exempt + ' remaining \
@@ -798,14 +844,14 @@ function showData(data, agency) {
     $('#optimization-charts').hide();
   }
   else {
-    if(exempt) {
-      let intro = 'This agency has ';
-      if(agency == allAgencies) {
-        intro = 'In total, there are ';
-      }
-      $('#optimization .exemption-count').text(intro + exempt + ' key mission facilities \
-        exempt from optimization as of ' + mostRecentQuarter + ' ' + mostRecentYear + '.');
+    let intro = 'This agency has ';
+    if(agency == allAgencies) {
+      intro = 'In total, there are ';
     }
+    let exemptCount = exempt || 'no';
+    $('#optimization .exemption-count').text(intro + exemptCount + ' key mission facilities \
+      exempt from optimization as of ' + mostRecentQuarter + ' ' + mostRecentYear + '.');
+
     $('#optimization-charts').show();
     $('#optimization > .helper-text').show();
 
@@ -855,8 +901,14 @@ function showClosures(data, agency) {
   countTierData.data.datasets = []
 
   closeState.forEach(function(state) {
-    let tieredCount = dataObj.get(agency, 'datacenters', state, allTimeperiods, 'tiered').map(_nullZero);
-    let nontieredCount = dataObj.get(agency, 'datacenters', state, allTimeperiods, 'nontiered').map(_nullZero);
+    let tieredCount = dataObj.get(agency, 'datacenters', state, allTimeperiods, 'tiered');
+    if(tieredCount !== null) {
+      tieredCount = tieredCount.map(_nullZero)
+    }
+    let nontieredCount = dataObj.get(agency, 'datacenters', state, allTimeperiods, 'nontiered');
+    if(nontieredCount !== null) {
+      nontieredCount = nontieredCount.map(_nullZero);
+    }
 
     countData.data.datasets.push({
       label: state,
@@ -924,7 +976,9 @@ function showClosures(data, agency) {
       backgroundColor: stateColors[state],
       data: tierData.data.labels.map(function(tier) {
         // If we have data for this time period, return it. Otherwise 0.
-        if(data[agency]['datacenters'][state] &&
+        if(
+          data[agency]['datacenters'] &&
+          data[agency]['datacenters'][state] &&
           data[agency]['datacenters'][state][allMostRecent] &&
           data[agency]['datacenters'][state][allMostRecent][tier]
         ) {
@@ -1086,7 +1140,7 @@ function showSavings(data, agency) {
       tooltips: {
         callbacks: {
           label: function (obj) {
-            return parseFloat(obj.value).toFixed(2);
+            return localizeValue(obj.value, 'costSavings');
           }
         }
       },
