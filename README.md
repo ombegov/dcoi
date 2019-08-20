@@ -4,14 +4,6 @@ Scripts &amp; Tools for processing DCOI IDC data files.
 _These scripts are currently in active development and may have
 outstanding issues._
 
-## TODO:
-
-* Script to scrape, validate, and import cost savings files from agency websites.
-* Additional validation rules in `validate.py`.
-* Handle adjudication of Optimization Exemptions across all scripts.
-* Create examples of usage of JSON files on the IT Dashboard.
-
-
 ## validate.py
 
 This script should be run to validate any IDC csv files before submitting to
