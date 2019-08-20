@@ -59,6 +59,7 @@ data.
 Using python, you can serve a local version with `python -m http.server 8000`
 (Python 3) or `python -m SimpleHTTPServer 8000` (Python 2).
 
+
 ## validate-web/
 
 This directory contains a port of the validate.py script to run in a web browser, client-side only.  This is currently copied to [@WhiteHouse/datacenters](https://github.com/WhiteHouse/datacenters) for the validator that appears on [https://datacenters.cio.gov](https://datacenters.cio.gov).
