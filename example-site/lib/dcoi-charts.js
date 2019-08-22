@@ -164,6 +164,9 @@ function localizeValue(value, label) {
     else if(label.indexOf('Savings') > -1) {
       return parseFloat(parseFloat(value).toFixed(2)).toLocaleString();
     }
+    else if(label === 'Downtime') {
+      return value || 0;
+    }
   }
 
   return parseInt(value).toLocaleString();
