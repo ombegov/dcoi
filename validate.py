@@ -249,7 +249,7 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
       errors.extend(validate_values(row, 'Closing Fiscal Year'))
       errors.extend(validate_values(row, 'Closing Quarter'))
 
-    if row.get('planned hours of facility availability') and int(row.get('planned hours of facility availability')) == 0:
+    if row.get('planned hours of facility availability') and int(float(row.get('planned hours of facility availability'))) == 0:
       errors.append('Planned Hours of Facility Availability must be greater than 0.')
 
     ###
@@ -302,7 +302,7 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
     # Total Servers vs Total Virtual Hosts
     #
     if (row.get('total servers') and row.get('total virtual hosts') and row.get('total mainframes') and
-      int(row.get('total virtual hosts')) > (int(row.get('total servers')) + int(row.get('total mainframes')))
+      int(float(row.get('total virtual hosts'))) > (int(float(row.get('total servers'))) + int(float(row.get('total mainframes'))))
     ):
       warnings.append('Total Virtual Hosts should not be greater than Total Servers plus Total Mainframes. Total Virtual Hosts represents the physical servers or mainframes dedicated to providing a virtualization layer to guest operating systems. These should be also included in the Total counts. Total Virtual Hosts is not a count of the guest operating systems (Total Virtual OS in previous collections).')
 
@@ -310,12 +310,12 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
     #
     if applicable:
       # Downtime
-      if row.get('actual hours of facility downtime') and int(row.get('actual hours of facility downtime')) > 0:
+      if row.get('actual hours of facility downtime') and int(float(row.get('actual hours of facility downtime'))) > 0:
         if 'facility downtime' in allRecordWarnings:
           del allRecordWarnings['facility downtime']
 
       # Underutilized Servers
-      if row.get('underutilized servers') and int(row.get('underutilized servers')) > 0:
+      if row.get('underutilized servers') and int(float(row.get('underutilized servers'))) > 0:
         if 'underutilized servers' in allRecordWarnings:
           del allRecordWarnings['underutilized servers']
 
