@@ -249,7 +249,7 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
       errors.extend(validate_values(row, 'Closing Fiscal Year'))
       errors.extend(validate_values(row, 'Closing Quarter'))
 
-    if row.get('planned hours of facility availability') and int(row.get('planned hours of facility availability')) == 0:
+    if row.get('planned hours of facility availability') and float(row.get('planned hours of facility availability')) == 0:
       errors.append('Planned Hours of Facility Availability must be greater than 0.')
 
     ###
@@ -310,7 +310,7 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
     #
     if applicable:
       # Downtime
-      if row.get('actual hours of facility downtime') and int(row.get('actual hours of facility downtime')) > 0:
+      if row.get('actual hours of facility downtime') and float(row.get('actual hours of facility downtime')) > 0:
         if 'facility downtime' in allRecordWarnings:
           del allRecordWarnings['facility downtime']
 
