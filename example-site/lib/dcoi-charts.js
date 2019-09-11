@@ -673,10 +673,10 @@ function showSummaryTable(data) {
     else {
 
       // Virtualization
-      let virtualAchieved = dataObj.get(agency, 'metrics.virtualization', allMostRecent, 'tiered');
+      let virtualAchieved = dataObj.sum(agency, 'metrics.virtualization', allMostRecent, ['tiered', 'cloud']);
       let virtualPlanned = dataObj.get(agency, 'plan.virtualization', mostRecentYear, 'Planned');
       let virtOpts = {};
-      if(virtualAchieved != null && virtualPlanned != null && virtualAchieved >= virtualPlanned) {
+      if(virtualAchieved != null && virtualAchieved != 0 && virtualPlanned != null && virtualAchieved >= virtualPlanned) {
         virtOpts.class = 'goal-met';
       }
 
@@ -1175,7 +1175,19 @@ function showVirtualization(data, agency) {
     fill: false,
     pointRadius: 6,
     lineTension: 0,
-    data: dataObj.get(agency, 'metrics.virtualization', allTimeperiods, 'tiered')
+    data: dataObj.get(agency, 'metrics.virtualization', allTimeperiods, 'tiered'),
+    stack: 'progress'
+  };
+  let cloudData = {
+    yAxisID: 'y-axis-left',
+    label: 'Cloud Instances',
+    borderColor: colors['teal'],
+    backgroundColor: colors['teal'],
+    fill: false,
+    pointRadius: 6,
+    lineTension: 0,
+    data: dataObj.get(agency, 'metrics.virtualization', allTimeperiods, 'cloud'),
+    stack: 'progress'
   };
   let serverData = {
     // hidden: true,
@@ -1186,7 +1198,8 @@ function showVirtualization(data, agency) {
     fill: false,
     pointRadius: 6,
     lineTension: 0,
-    data: dataObj.get(agency, 'metrics.servers', allTimeperiods, 'tiered')
+    data: dataObj.get(agency, 'metrics.servers', allTimeperiods, 'tiered'),
+    stack: 'servers'
   };
   let percentData = {
     type: 'line',
@@ -1212,7 +1225,7 @@ function showVirtualization(data, agency) {
     type: 'bar',
     data: {
       labels: allTimeperiods,
-      datasets: [percentData, achievedData, serverData]
+      datasets: [percentData, achievedData, cloudData, serverData]
     },
     options: {
       scales: {
@@ -1220,7 +1233,7 @@ function showVirtualization(data, agency) {
           {
             id: 'y-axis-left',
             position: 'left',
-            stacked: false,
+            stacked: true,
           },
           percentAxis
         ],

@@ -254,6 +254,26 @@ for row in c.fetchall():
     deepadd(data, allAgencies, 'metrics', metric, quarter, tier, row[metric])
     deepadd(data, allAgencies, 'metrics', metric, quarter, 'tiered', row[metric])
 
+## Add cloud count to virtualization.
+c.execute('''
+SELECT
+agency,
+year,
+quarter,
+SUM(virtualHostCount) AS virtualization
+FROM datacenters
+WHERE LOWER(closingStage) = 'not closing'
+AND LOWER(ownershipType) = 'using cloud provider'
+GROUP BY agency, year, quarter
+ORDER BY agency, year, quarter
+''')
+
+for row in c.fetchall():
+  # Setup our quarter string.
+  quarter = getQuarter(row)
+
+  deepadd(data, row['agency'], 'metrics', 'virtualization', quarter, 'cloud', row['virtualization'])
+  deepadd(data, allAgencies, 'metrics', 'virtualization', quarter, 'cloud', row['virtualization'])
 
 # Export our strategic plan data.
 
