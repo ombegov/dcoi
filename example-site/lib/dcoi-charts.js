@@ -305,7 +305,7 @@ function loadApp() {
   <div id="updated-message" class="message"></div>\
   <div id="main-message" class="message"></div>\
   <h2>Summary</h2>\
-  <p class="helper-text">Field titles may be clicked to sort on that field.</p>\
+  <p class="helper-text">Goals are shown for the current year. Field titles may be clicked to sort on that field.</p>\
   <div class="summary-table" id="summary-table"></div>\
   <p>Agencies marked with <strong>*</strong> had not reported a strategic plan at the time this report was generated. Goal information is incomplete for these agencies.</p>\
   <p><span class="complete">Fields marked in green indicate agencies that have completed this requirement of DCOI and have no further work required in this area.</span></p>\
@@ -365,7 +365,7 @@ function loadApp() {
       <div class="table-holder"></div>\
       <p class="message"></p>\
       <p>\
-        Definitions for virtualization changed in Q4 2018. Server count is inclusive of any virtual hosts.\
+        Definitions for virtualization changed in Q4 2018. Cloud instances may be included in goals and are used to show progress. Server count is inclusive of any virtual hosts.\
       </p>\
     </div>\
     <div id="availability" class="chart">\
@@ -531,13 +531,13 @@ function buildTable(config) {
 function showSummaryTable(data) {
   let agencies = Object.keys(data);
   let fields = [
-    'Savings<br><span class="units">millions of dollars</span>',
-    'Open<br><span class="units">valid data centers</span>',
-    'Closures<br><span class="units">valid data centers</span>',
-    'Virtualization<br><span class="units">virtual hosts</span>',
-    'Availability<br><span class="units">percent uptime</span>',
-    'Metering<br><span class="units">number of data centers</span>',
-    'Utilization<br><span class="units">underutilized servers</span>'
+    'Savings<br><span class="units">millions of dollars</span><br><span class="units">(more is better)',
+    'Open<br><span class="units">valid data centers</span><br><span class="units">(fewer is better)',
+    'Closures<br><span class="units">valid data centers</span><br><span class="units">(more is better)',
+    'Virtualization<br><span class="units">virtual hosts</span><br><span class="units">(more is better)',
+    'Availability<br><span class="units">percent uptime</span><br><span class="units">(higher is better)',
+    'Metering<br><span class="units">number of data centers</span><br><span class="units">(more is better)',
+    'Utilization<br><span class="units">underutilized servers</span><br><span class="units">(fewer is better)'
   ];
 
   // Remove "All Agencies"
