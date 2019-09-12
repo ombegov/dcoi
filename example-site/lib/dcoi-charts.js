@@ -99,6 +99,67 @@ const allAgencies = 'All Agencies';
 
 const tiers = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4'];
 
+/**
+ * If anyone wanted to find out some stuff,
+ * all they’d have to do would be to follow the spiders. ¤
+ *
+ * NOTE: the problem with this code today is that this is the *current* score
+ * against the *current* goal. Given that it takes a year to meet the goals, this
+ * is highly inaccurate. This should be modified to show if the *most recent* Q1
+ * meets the _previous_ year's goal.
+ */
+var showScores = false;
+
+const scoring = {
+  'closures': 70,
+  'costSavings': 5,
+  'virtualization': 15,
+  'availability': 8,
+  'metering': 5,
+  'utilization': 2
+};
+const grades = [
+  [0,  'F'],
+  [60, 'D'],
+  [70, 'C'],
+  [80, 'B'],
+  [90, 'A']
+];
+
+function grading(score) {
+  let grade = '';
+  for(let i = 0; i < grades.length; i++){
+    if(score > grades[i][0]) {
+      grade = grades[i][1];
+    }
+    else {
+      break;
+    }
+  }
+  return grade;
+}
+
+// Availability is a bit different from the other fields.
+// We want to know how far off they were, which is an order of maginitude problem.
+// Thus, we need a logarithmic scale to properly calculate the difference.
+const availPrecision = -3; // 0.001%
+function availLogScore(diff) {
+
+  let amt = Math.log10(diff);
+  // If we're more than 1% off, no points awarded.
+  if(amt >= 0) {
+    return 0;
+  }
+  // If we're less than availPrecision off, full points awarded
+  if(amt <= availPrecision) {
+    return scoring['availability'];
+  }
+  // For anything in between, calculate how close to availPrecision off we are.
+  else {
+    return Math.ceil(scoring['availability'] * (amt / availPrecision));
+  }
+}
+
 /* SafeObj helpers: map & reducer functions. */
 
 // Array to object keys.
@@ -546,7 +607,14 @@ function showSummaryTable(data) {
 
   let table = '<table class="table datatable">\
     <thead>';
-  table += tr(th('Agency', {rowspan:2}) + th(fields[0], {colspan:3}) + th(fields.slice(1), {colspan:2}));
+
+  let headRow = th('Agency', {rowspan:2}) + th(fields[0], {colspan:3}) + th(fields.slice(1), {colspan:2});
+  //¤
+  if(showScores) {
+    headRow += th('Grade', {'rowspan': '2'});
+  }
+
+  table += tr(headRow);
 
   table += th(['Current', 'Goal', 'Total']);
   table += th(['Regular', 'KMF']);
@@ -597,13 +665,21 @@ function showSummaryTable(data) {
 
     row += th(name);
 
+    let score = 0; //¤
+
     // Savings
     let savingsPlanned = dataObj.get(agency, 'plan.savings', mostRecentYear, 'Planned');
     let savingsAchieved = dataObj.get(agency, 'plan.savings', mostRecentYear, 'Achieved') || 0;
     let savingsTotal = dataObj.sum(agency, 'plan.savings', planPastYears, 'Achieved');
     let savingsOpts = {};
-    if(savingsAchieved !== null && savingsPlanned !== null && savingsAchieved >= savingsPlanned) {
-      savingsOpts.class = 'goal-met';
+    if(savingsAchieved !== null && savingsPlanned !== null) {
+      if(savingsAchieved >= savingsPlanned) {
+        savingsOpts.class = 'goal-met';
+        score += scoring['costSavings'];  //¤
+      }
+      else if(savingsPlanned > 0) {
+        score += Math.ceil(scoring['costSavings'] * (savingsAchieved / savingsPlanned));  //¤
+      }
     }
 
     row += td([
@@ -614,7 +690,11 @@ function showSummaryTable(data) {
 
     // Open Facilities
     let regularCount = dataObj.get(agency, 'datacenters.open', allMostRecent, 'tiered') || 0;
-    let openClass = regularCount ? '' : 'complete';
+    let openClass = '';
+    if(!regularCount) {
+      openClass = 'complete';
+      score += scoring['closures']; //¤
+    }
 
     row += td(
       regularCount,
@@ -633,8 +713,14 @@ function showSummaryTable(data) {
     let closed = dataObj.get(agency, 'datacenters.closed', allMostRecent, 'tiered') || 0;
     let closuresPlanned = dataObj.get(agency, 'plan.closures', mostRecentYear, 'Planned');
     let closedClass = openClass;
-    if(closedClass == '' && closuresPlanned != null && closed >= closuresPlanned) {
-      closedClass = 'goal-met';
+    if(closedClass == '' && closuresPlanned != null) {
+      if(closed >= closuresPlanned) {
+        closedClass = 'goal-met';
+        score += scoring['closures']; //¤
+      }
+      else {
+        score += Math.ceil(scoring['closures'] * (closed / closuresPlanned)); //¤
+      }
     }
 
     row += td(
@@ -665,10 +751,13 @@ function showSummaryTable(data) {
     // Some agencies are done.
     if(open == 0 || nonExempt == 0) {
       row += times(8, td('Complete', {'class': 'complete'}));
+      score = 100; //¤
     }
     // Some agencies have no metrics.
     else if(typeof data['metrics'] == 'undefined') {
       row += times(8, td('-'));
+      score += scoring['virtualization'] + scoring['availability'] +
+        scoring['metering'] + scoring['utilization']; //¤
     }
     else {
 
@@ -676,8 +765,15 @@ function showSummaryTable(data) {
       let virtualAchieved = dataObj.sum(agency, 'metrics.virtualization', allMostRecent, ['tiered', 'cloud']);
       let virtualPlanned = dataObj.get(agency, 'plan.virtualization', mostRecentYear, 'Planned');
       let virtOpts = {};
-      if(virtualAchieved != null && virtualAchieved != 0 && virtualPlanned != null && virtualAchieved >= virtualPlanned) {
-        virtOpts.class = 'goal-met';
+
+      if(virtualAchieved != null && virtualPlanned != null) {
+        if(virtualAchieved != 0 && virtualAchieved >= virtualPlanned) {
+          virtOpts.class = 'goal-met';
+          score += scoring['virtualization']; //¤
+        }
+        else if(virtualPlanned > 0) {
+          score += Math.ceil(scoring['virtualization'] * (virtualAchieved / virtualPlanned)) //¤
+        }
       }
 
       row += td(
@@ -692,7 +788,7 @@ function showSummaryTable(data) {
 
       // Availability
 
-      let availPercent = '-';
+      let availPercent = null;
       let availHours = dataObj.get(agency, 'metrics.plannedAvailability', allMostRecent, 'tiered');
       let downtime = dataObj.get(agency, 'metrics.downtime', allMostRecent, 'tiered') || 0;
       let availPlanned = dataObj.get(agency, 'plan.availability', mostRecentYear, 'Planned');
@@ -709,25 +805,40 @@ function showSummaryTable(data) {
         if((availPlanned != null || availPercent == 100) && availPercent >= availPlanned) {
           availOpts.class = 'goal-met';
         }
-
-        availPercent = localizeValue(availPercent, 'Percent');
       }
 
-      row += td(availPercent, availOpts);
+      row += td(
+        availPercent != null ? localizeValue(availPercent, 'Percent') : '-',
+        availOpts
+      );
 
       row += td(
         availPlanned != null ? localizeValue(availPlanned, 'Percent') : '-',
         availOpts
       );
 
+      if(availPercent != null && availPercent != '-' && availPlanned != 'null') { //¤
+        if(availPercent >= availPlanned) {
+          score += scoring['availability'];
+        }
+        else {
+          score += availLogScore(availPlanned - availPercent);
+        }
+      }
+
       // Metering
 
       let meteringAchieved = dataObj.get(agency, 'metrics.energyMetering', allMostRecent, 'tiered');
       let meteringPlanned = dataObj.get(agency, 'plan.energyMetering', mostRecentYear, 'Planned');
       let meterOpts = {};
-      if(meteringAchieved != null && meteringPlanned != null &&
-          meteringAchieved >= meteringPlanned) {
-        meterOpts.class = 'goal-met';
+      if(meteringAchieved != null && meteringPlanned != null) {
+        if(meteringAchieved != 0 && meteringAchieved >= meteringPlanned) {
+          meterOpts.class = 'goal-met';
+          score += scoring['metering']; //¤
+        }
+        else if(meteringPlanned > 0) {
+          score += Math.ceil(scoring['metering'] * (meteringAchieved / meteringPlanned)) //¤
+        }
       }
 
       row += td(
@@ -740,13 +851,20 @@ function showSummaryTable(data) {
         meterOpts
       );
 
+
+
       // Utilization - this is the only field that should be *less* than the goal!
       let utilizationAchieved = dataObj.get(agency, 'metrics.underutilizedServers', allMostRecent, 'tiered');
       let utilizationPlanned = dataObj.get(agency, 'plan.underutilizedServers', mostRecentYear, 'Planned');
       let utilOpts = {};
-      if(utilizationAchieved != null && utilizationPlanned != null &&
-          utilizationAchieved <= utilizationPlanned) {
-        utilOpts.class = 'goal-met';
+      if(utilizationAchieved != null && utilizationPlanned != null) {
+        if(utilizationAchieved != 0 && utilizationAchieved >= utilizationPlanned) {
+          utilOpts.class = 'goal-met';
+          score += scoring['utilization']; //¤
+        }
+        else if(utilizationPlanned > 0) {
+          score += Math.ceil(scoring['utilization'] * (utilizationAchieved / utilizationPlanned)) //¤
+        }
       }
 
       row += td(
@@ -758,6 +876,11 @@ function showSummaryTable(data) {
         utilizationPlanned != null ? localizeValue(utilizationPlanned) : '-',
         utilOpts
       );
+    }
+
+    //¤
+    if(showScores) {
+      row += td(grading(score), {'class': 'grade'});
     }
 
     return tr(row, {'class': classes.join(' ')});
