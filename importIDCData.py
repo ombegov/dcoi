@@ -74,7 +74,8 @@ def import_file(filename, q, conn):
 
   agencies = []
   rows = []
-  with io.open(filename, 'r') as datafile:
+
+  with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
     headings = None
 
     for line in datafile:
@@ -94,6 +95,7 @@ def import_file(filename, q, conn):
 
       # We only want valid records.
       if row.get('record validity') != 'Valid Facility':
+        print('Skipping: inValid Facility :: '+row.get('data center id'))
         continue
 
       # Overwrite any previous data for this agency for the specified quarter.
@@ -174,6 +176,10 @@ def import_file(filename, q, conn):
           rows = []
 
         conn.commit()
+
+      if not row.get('data center id'):
+        print("Empty 'data center id'")
+        continue
 
       print(row.get('data center id'), year, quarter)
 
