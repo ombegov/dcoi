@@ -327,7 +327,7 @@ data['__meta__'] = {
   'updatedAt': datetime.datetime.now().isoformat()
 }
 
-print( jsonCleanup(json.dumps(data)) )
+print(jsonCleanup(json.dumps(data, indent=2)))
 # TODO: Maybe export a file instead of just printing?
 
 #conn.commit()
