@@ -27,9 +27,9 @@ Usage: `python createDatabase.py`
 This script imports data from an IDC spreadsheet or a directory of spreadsheets
 into the SQLite database.
 
-Usage: `python importIDCData.py FILENAME.csv`
+Usage: `python importIDCData.py 2018q3 FILENAME.csv`
 
-Usage: `python importIDCData.py /DIRECTORY/OF/DATAFILES/`
+Usage: `python importIDCData.py 2018q3 /DIRECTORY/OF/DATAFILES/`
 
 
 ## stratPlanDownload.py
