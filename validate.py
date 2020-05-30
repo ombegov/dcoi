@@ -5,19 +5,31 @@ import sys
 import itertools
 import re
 import io
+from pprint import pprint
 
 # Remove the script from our arguments.
 arguments = sys.argv[1:]
 
 errorsOnly = False
+showSummary = False
 
 # Check for our flags, and strip from our arguments.
 i = 0
 while i < len(arguments):
-  if arguments[i] == '--errors-only':
+  argument = arguments[i]
+  stripArgument = True
+
+  if argument == '--errors-only':
     errorsOnly = True
+  elif argument == '--show-summary':
+    showSummary = True
+  else:
+    stripArgument = False
+
+  if stripArgument:
     del arguments[i]
-  i += 1
+  else:
+    i += 1
 
 # Our remaining argument should be the filename.
 try:
@@ -167,7 +179,11 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
     'record_error': 0,
     'record_warning': 0,
     'error': 0,
-    'warning': 0
+    'warning': 0,
+    'summary': {
+      'error': {},
+      'warning': {},
+    },
   }
   for row in reader:
     num = reader.line_num
@@ -360,6 +376,22 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
     stats['record_warning'] += 1 if len(warnings) else 0
     stats['error'] += len(errors)
     stats['warning'] += len(warnings)
+    agencyName = row.get('agency abbreviation', 'noname')
+    for e in errors:
+      if agencyName not in stats['summary']['error']:
+        stats['summary']['error'][agencyName] = {}
+      if e in stats['summary']['error'][agencyName]:
+        stats['summary']['error'][agencyName][e] += 1
+      else:
+        stats['summary']['error'][agencyName][e] = 1
+    for w in warnings:
+      if agencyName not in stats['summary']['warning']:
+        stats['summary']['warning'][agencyName] = {}
+      if w in stats['summary']['warning'][agencyName]:
+        stats['summary']['warning'][agencyName][w] += 1
+      else:
+        stats['summary']['warning'][agencyName][w] = 1
+
 
   ###
   # Print our final validation results.
@@ -400,4 +432,14 @@ with io.open(filename, 'r', encoding='utf-8-sig', errors='replace') as datafile:
     print('* The file had no problems or errors.')
 
   print('********************************************************************************')
+
+  if hasErrors and showSummary:
+    print('Error Summary by Agency')
+    pprint(stats['summary']['error'])
+
+  if hasWarnings and showSummary and not errorsOnly:
+    print('********************************************************************************')
+    print('Warning Summary by Agency')
+    pprint(stats['summary']['warning'])
+
   print('')
